@@ -1,0 +1,41 @@
+@import "tailwindcss";
+
+/* src/styles.css */
+:root {
+  color-scheme: light;
+}
+
+:root.dark {
+  color-scheme: dark;
+}
+
+html, body {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Add these to styles.css */
+html.dark {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+html.dark body {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+html.dark header {
+  background-color: #1f2937 !important;
+}
+
+/* Debug styles */
+.dark-mode-debug {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  font-size: 12px;
+  z-index: 9999;
+}

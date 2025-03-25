@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>AI Tattoo Assistant Chat</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Script to prevent flash of wrong theme -->
+  <script>
+    try {
+      // Check for saved theme preference or use OS preference
+      const theme = localStorage.getItem('theme') || 
+        (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      
+      // Apply the theme class early to prevent flash
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      console.log('Theme initialized to:', theme);
+    } catch (e) {
+      // If localStorage is not available, do nothing
+      console.warn('Theme preference could not be determined:', e);
+    }
+  </script>
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
