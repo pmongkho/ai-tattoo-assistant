@@ -1,0 +1,58 @@
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: dotnet-server/Dockerfile
+    ports:
+      - '5000:5000'
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:5000
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=tattoo_assistant_db;Username=a_mac;Password=password
+      - OpenAI__ApiKey=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
+    volumes:
+      - keys:/root/.aspnet/DataProtection-Keys
+      - ./dotnet-server/appsettings.Development.json:/app/appsettings.Development.json
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./angular-client
+      dockerfile: Dockerfile
+    ports:
+      - '4200:80'
+    depends_on:
+      - backend
+    networks:
+      - app-network
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=tattoo_assistant_db
+      - POSTGRES_USER=a_mac
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '5433:5432'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U a_mac -d tattoo_assistant_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  keys:

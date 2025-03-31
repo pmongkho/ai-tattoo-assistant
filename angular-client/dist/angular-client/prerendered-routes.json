@@ -1,0 +1,7 @@
+{
+  "routes": {
+    "/chat": {},
+    "/login": {},
+    "/verify-email": {}
+  }
+}

@@ -90,7 +90,20 @@ builder.Services.AddAuthentication(options =>
 
 
 // ✅ Register Other Services
-builder.Services.AddHttpClient<ChatService>();
+builder.Services.AddHttpClient<ChatService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.openai.com/");
+});
+
+// Add logging configuration
+builder.Services.AddLogging(logging =>
+{
+    logging.AddConsole();
+    logging.AddDebug();
+});
+
+// Add configuration explicitly
+builder.Configuration.AddEnvironmentVariables(prefix: "OpenAI__");
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
@@ -109,7 +122,14 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClients", policy =>
     {
-        policy.WithOrigins("http://localhost:4200", "http://localhost:5096")
+        policy.WithOrigins(
+                "http://localhost:4200", 
+                "http://localhost:5096",
+                "http://localhost:80",
+                "http://frontend",
+                "http://localhost:5000",
+                "http://backend:5000"
+            )
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -129,11 +149,29 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// ✅ Configure Middleware (Order Matters!)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors("AllowClients");
-
-app.UseHttpsRedirection();
 app.UseAuthentication();  // ✅ Authentication first
 app.UseAuthorization();   // ✅ Authorization after authentication
-
 app.MapControllers();
+
+// Apply migrations at startup
+using (var scope = app.Services.CreateScope())
+{
+    var services = scope.ServiceProvider;
+    try
+    {
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        context.Database.Migrate();
+        Console.WriteLine("Database migrations applied successfully.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"An error occurred while applying migrations: {ex.Message}");
+    }
+}
 app.Run();

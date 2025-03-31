@@ -14,14 +14,29 @@ namespace DotNet.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiKey;
         private readonly string _model;
+        private readonly ILogger<ChatService> _logger;
 
-        public ChatService(IConfiguration configuration, HttpClient httpClient)
+
+        public ChatService(IConfiguration configuration, HttpClient httpClient, ILogger<ChatService> logger)
         {
             _httpClient = httpClient;
-            _apiKey = configuration["OpenAIKey"] ?? "none";
-            _model = configuration["OpenAIModel"] ?? "gpt-3.5-turbo";
-        }
+            _logger = logger;
+            
+            // Try to get API key from environment variable first, then fallback to configuration
+            _apiKey = Environment.GetEnvironmentVariable("OpenAI__ApiKey") ?? 
+                      configuration["OpenAI:ApiKey"];
+            
+            _model = configuration["OpenAI:AiModel"] ?? "gpt-3.5-turbo";
 
+            // Log configuration (but mask most of the API key)
+            var maskedKey = _apiKey?.Length > 8 
+                ? _apiKey.Substring(0, 8) + "..." 
+                : "(not set)";
+            _logger.LogInformation($"ChatService initialized with model: {_model}, API key: {maskedKey}");
+
+            // Configure HttpClient
+            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+        }
         // / <summary>
         // / Gets a response from the AI acting as a tattoo consultation assistant.
         // / The system prompt instructs the AI to ask for details in a specific sequence:
