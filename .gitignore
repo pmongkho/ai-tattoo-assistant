@@ -51,4 +51,6 @@ dotnet-server/Properties/launchSettings.json
 dotnet-server/appsettings.json
 dotnet-server/appsettings.Development.json
 dotnet-server/bin/
+.env
+
 
