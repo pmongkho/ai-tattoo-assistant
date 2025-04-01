@@ -17,7 +17,6 @@ export class ChatService {
 	constructor(private http: HttpClient) {}
 
 	sendMessage(message: string): Observable<any> {
-		const chatMessage: ChatMessage = { message }
-		return this.http.post(`${this.apiUrl}/tattoo/consult`, chatMessage)
+		return this.http.post(`${this.apiUrl}/tattoo/consult`, {Message:message})
 	}
 }

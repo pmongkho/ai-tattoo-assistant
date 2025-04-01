@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using DotNet.Models;
 using DotNet.Services;
@@ -33,29 +34,67 @@ Do not ask for specific design details or reference photos at this time.")
             _chatService = chatService;
         }
 
+        // dotnet-server/_Controllers/ChatController.cs (TattooController)
         [HttpPost("consult")]
         public async Task<IActionResult> Consult([FromBody] ChatRequest request)
         {
+            // Add logging
+            Console.WriteLine($"Received request: {JsonSerializer.Serialize(request)}");
+
             if (string.IsNullOrWhiteSpace(request.Message))
             {
+                Console.WriteLine("Message is null or empty");
                 return BadRequest("Message cannot be empty.");
             }
 
-            // Add the user's new message to the conversation history.
-            _conversationHistory.Add(new ChatMessage("user", request.Message));
+            try
+            {
+                // Add the user's new message to the conversation history.
+                _conversationHistory.Add(new ChatMessage("user", request.Message));
 
-            // Get the AI's response using the full conversation history.
-            var aiResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
+                // Get the AI's response using the full conversation history.
+                var aiResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
 
-            // Append the AI's response to the conversation history.
-            _conversationHistory.Add(new ChatMessage("assistant", aiResponse));
+                // Append the AI's response to the conversation history.
+                _conversationHistory.Add(new ChatMessage("assistant", aiResponse));
 
-            return Ok(new { response = aiResponse });
+                return Ok(new { response = aiResponse });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in consult: {ex.Message}");
+                Console.WriteLine($"Stack trace: {ex.StackTrace}");
+                return StatusCode(500, new { error = ex.Message });
+            }
         }
-    }
+        
+        // Add this to your TattooController
+        [HttpGet("test-openai")]
+        public async Task<IActionResult> TestOpenAI()
+        {
+            try
+            {
+                var testConversation = new List<ChatMessage>
+                {
+                    new ChatMessage("system", "You are a helpful assistant."),
+                    new ChatMessage("user", "Say hello!")
+                };
 
-    public class ChatRequest
-    {
-        public string? Message { get; set; }
+                var response = await _chatService.GetChatResponseAsync(testConversation);
+                return Ok(new { Response = response, Success = true });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OpenAI test failed: {ex.Message}");
+                return StatusCode(500, new { Error = "OpenAI test failed", Details = ex.Message });
+            }
+        }
+
+
+
+        public class ChatRequest
+        {
+            public string? Message { get; set; }
+        }
     }
 }

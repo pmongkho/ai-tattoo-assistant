@@ -17,9 +17,26 @@ RUN echo "Contents before build:" && ls -la
 # Ensure environments directory exists
 RUN mkdir -p src/environments
 
-# Create environment files
-RUN echo 'export const environment = { production: true, apiUrl: "http://backend:5000/api" };' > src/environments/environment.prod.ts
-RUN echo 'export const environment = { production: false, apiUrl: "http://localhost:5000/api" };' > src/environments/environment.ts
+# Get environment variables from build args
+ARG API_URL_DEV
+ARG API_URL_PROD
+ARG OPENAI_API_KEY
+ARG RESEND_API_TOKEN
+
+# Create environment files using the build args
+RUN echo "export const environment = { \
+  production: true, \
+  apiUrl: '${API_URL_PROD}', \
+  openaiApiKey: '${OPENAI_API_KEY}', \
+  resendApiToken: '${RESEND_API_TOKEN}' \
+};" > src/environments/environment.prod.ts
+
+RUN echo "export const environment = { \
+  production: false, \
+  apiUrl: '${API_URL_DEV}', \
+  openaiApiKey: '${OPENAI_API_KEY}', \
+  resendApiToken: '${RESEND_API_TOKEN}' \
+};" > src/environments/environment.ts
 
 # Build for production
 RUN npm run build

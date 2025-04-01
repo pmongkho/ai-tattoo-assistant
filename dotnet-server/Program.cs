@@ -21,6 +21,16 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+builder.Configuration
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables(); // This enables ALL environment variables
+
+// Log configuration values for debugging
+Console.WriteLine($"OpenAI:ApiKey exists: {!string.IsNullOrEmpty(builder.Configuration["OpenAI:ApiKey"])}");
+Console.WriteLine($"ConnectionStrings:DefaultConnection: {builder.Configuration.GetConnectionString("DefaultConnection")}");
+
+
 // Add this before you build the app
 try
 {
@@ -78,16 +88,6 @@ builder.Services.AddAuthentication(options =>
             )
         };
     });
-// 🔹 Add Google Authentication
-    // .AddCookie() // Required for Google Authentication
-    // .AddGoogle("Google", options =>
-    // {
-    //     options.ClientId = builder.Configuration["Authentication:Google:ClientId"]
-    //                        ?? throw new InvalidOperationException("Google ClientId is missing!");
-    //     options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]
-    //                            ?? throw new InvalidOperationException("Google ClientSecret is missing!");
-    // });
-
 
 // ✅ Register Other Services
 builder.Services.AddHttpClient<ChatService>(client =>
@@ -124,10 +124,9 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:4200", 
-                "http://localhost:5096",
+                "http://localhost:5000",  // Make sure this matches your backend port
                 "http://localhost:80",
                 "http://frontend",
-                "http://localhost:5000",
                 "http://backend:5000"
             )
             .AllowAnyHeader()
