@@ -11,7 +11,7 @@ using DotNet.Models;
 using System.Text.Encodings.Web;
 using FirebaseAdmin.Auth;
 
-namespace DotNet.Controllers; // ✅ Ensure correct namespace
+namespace DotNet.Controllers;
 
 [Route("api/auth")]
 [ApiController]
@@ -20,13 +20,20 @@ public class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IResend _resendClient;
+    private readonly ILogger<AuthController> _logger;
     private readonly IConfiguration _config;
 
-    public AuthController(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IResend resendClient, IConfiguration config)
+    public AuthController(
+        UserManager<ApplicationUser> userManager, 
+        SignInManager<ApplicationUser> signInManager, 
+        IResend resendClient,
+        ILogger<AuthController> logger,
+        IConfiguration config)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _resendClient = resendClient;
+        _logger = logger;
         _config = config;
     }
 
@@ -76,14 +83,13 @@ public class AuthController : ControllerBase
         // Generate JWT
         var jwtToken = GenerateJwtToken(user);
         
-        var clientUrl = _config["Client:ClientUrl"] ?? "http://localhost:4200";
-
+        var clientUrl = Environment.GetEnvironmentVariable("ANGULAR_CLIENT_URL") ?? "http://localhost:4200";
 
         // 🔁 Redirect to Angular app with token
         return Redirect($"{clientUrl}/verify-email?email={email}&token={jwtToken}");
     }
 
-  [HttpPost("login-google")]
+    [HttpPost("login-google")]
     public async Task<IActionResult> LoginWithGoogle([FromBody] GoogleAuthRequest model)
     {
         if (string.IsNullOrEmpty(model.IdToken))
@@ -189,7 +195,6 @@ public class AuthController : ControllerBase
         });
     }
 
-    
     // ✅ GENERATE JWT TOKEN
     private string GenerateJwtToken(ApplicationUser user)
     {
@@ -199,11 +204,35 @@ public class AuthController : ControllerBase
             new Claim(ClaimTypes.Email, user.Email)
         };
 
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["JwtSettings:SecretKey"]!));
+        // Try to get JWT settings from environment variables first, then from configuration
+        string secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? 
+                          _config["JwtSettings:SecretKey"];
+        
+        string issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? 
+                       _config["JwtSettings:Issuer"];
+        
+        string audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? 
+                         _config["JwtSettings:Audience"];
+
+        // Log JWT settings for debugging
+        Console.WriteLine($"JWT_SECRET_KEY exists: {!string.IsNullOrEmpty(secretKey)}");
+        Console.WriteLine($"JWT_ISSUER: {issuer}");
+        Console.WriteLine($"JWT_AUDIENCE: {audience}");
+
+        if (string.IsNullOrEmpty(secretKey))
+            throw new InvalidOperationException("JWT secret key is not configured");
+        
+        if (string.IsNullOrEmpty(issuer))
+            throw new InvalidOperationException("JWT issuer is not configured");
+        
+        if (string.IsNullOrEmpty(audience))
+            throw new InvalidOperationException("JWT audience is not configured");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var token = new JwtSecurityToken(
-            issuer: _config["JwtSettings:Issuer"],
-            audience: _config["JwtSettings:Audience"],
+            issuer: issuer,
+            audience: audience,
             claims: claims,
             expires: DateTime.UtcNow.AddHours(1),
             signingCredentials: credentials

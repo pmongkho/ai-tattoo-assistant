@@ -72,7 +72,29 @@ builder.Services.AddAuthentication(options =>
 // 🔹 Add JWT Authentication
     .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
     {
-        var config = builder.Configuration.GetRequiredSection("JwtSettings");
+        // Try to get JWT settings from environment variables first, then from configuration
+        string secretKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ?? 
+                           builder.Configuration["JwtSettings:SecretKey"];
+    
+        string issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? 
+                        builder.Configuration["JwtSettings:Issuer"];
+    
+        string audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? 
+                          builder.Configuration["JwtSettings:Audience"];
+
+        // Log JWT settings for debugging
+        Console.WriteLine($"JWT_SECRET_KEY exists: {!string.IsNullOrEmpty(secretKey)}");
+        Console.WriteLine($"JWT_ISSUER: {issuer}");
+        Console.WriteLine($"JWT_AUDIENCE: {audience}");
+
+        if (string.IsNullOrEmpty(secretKey))
+            throw new InvalidOperationException("JWT secret key is not configured");
+    
+        if (string.IsNullOrEmpty(issuer))
+            throw new InvalidOperationException("JWT issuer is not configured");
+    
+        if (string.IsNullOrEmpty(audience))
+            throw new InvalidOperationException("JWT audience is not configured");
 
         options.TokenValidationParameters = new TokenValidationParameters
         {
@@ -80,14 +102,12 @@ builder.Services.AddAuthentication(options =>
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = config["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is missing!"),
-            ValidAudience = config["Audience"] ?? throw new InvalidOperationException("JWT Audience is missing!"),
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(config["SecretKey"] ??
-                                       throw new InvalidOperationException("JWT SecretKey is missing!"))
-            )
+            ValidIssuer = issuer,
+            ValidAudience = audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey))
         };
     });
+
 
 // ✅ Register Other Services
 builder.Services.AddHttpClient<ChatService>(client =>
