@@ -22,24 +22,24 @@ namespace DotNet.Services
         {
             _httpClient = httpClient;
             _logger = logger;
-    
+
             // Try to get API key from environment variable first, then fallback to configuration
-            _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? 
+            _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ??
                       configuration["OpenAI:ApiKey"];
-    
+
             if (string.IsNullOrEmpty(_apiKey))
             {
                 _logger.LogError("OpenAI API key is not configured!");
                 throw new InvalidOperationException("OpenAI API key is not configured");
             }
-    
-            _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ?? 
-                     configuration["OpenAI:AiModel"] ?? 
+
+            _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ??
+                     configuration["OpenAI:AiModel"] ??
                      "gpt-3.5-turbo";
 
             // Log configuration (but mask most of the API key)
-            var maskedKey = _apiKey?.Length > 8 
-                ? _apiKey.Substring(0, 8) + "..." 
+            var maskedKey = _apiKey?.Length > 8
+                ? _apiKey.Substring(0, 8) + "..."
                 : "(not set)";
             _logger.LogInformation($"ChatService initialized with model: {_model}, API key: {maskedKey}");
 
@@ -60,32 +60,30 @@ namespace DotNet.Services
         // / </summary>
         // / <param name="userMessage">The client's initial message.</param>
         // / <returns>The AI's response with follow-up questions.</returns>
+// dotnet-server/_Services/ChatService.cs
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
             var url = "https://api.openai.com/v1/chat/completions";
 
-            // System prompt that guides the AI through a structured consultation.
+            // Updated system prompt that guides the AI to be more conversational
             string systemPrompt = @"You are a professional tattoo consultation assistant.
-When a client sends you a message, guide the conversation by asking for tattoo details in the following order:
-1. Ask what the subject matter of the tattoo is give some examples like black and grey portraits or an animal, objects or something abstract.
-2. Ask which tattoo style the client prefers. For example, choose from:
-   - Traditional & Old School, Neo Traditional, Fine Line, Tribal, Watercolor, Blackwork, 
-     Color Realism, Japanese Traditional, Trash Polka, Geometric, Patchwork, Black and Grey Realism, 
-     Anime, Black and Grey, Continuous Line Contour, Sketch.
-3. Ask where on the body the client would like the tattoo placed. Options include:
-   Head, Face, Mouth, Neck, Shoulder, Arm Pit, Upper Arm, Lower Arm, Inner Upper Arm, Inner Lower Arm, Take a Photo
-   Chest, Ribs, Stomach, Back, Hip, Groin, Upper Leg, Lower Leg, Foot, Hands, or Other.
-4. Ask what size in inches the client would like the tattoo to be approximately.
-5. Ask about the client's price expectations or confirm if the provided price is acceptable.
-6. If the price is agreed upon, ask if the client would like to book an appointment and offer scheduling options.
-Do not ask for specific design details or reference photos at this time.";
+Guide the conversation naturally by asking ONE question at a time about the client's tattoo preferences.
+Follow this sequence of topics, but only move to the next topic after getting an answer to the current one:
+
+1. First, ask what subject matter they're interested in for their tattoo (e.g., portrait, animal, abstract design).
+2. Once you know the subject, ask which tattoo style they prefer (e.g., Traditional, Fine Line, Blackwork, Realism).
+3. After learning the style, ask where on their body they'd like the tattoo placed.
+4. Then ask about the approximate size in inches they're considering.
+5. Next, discuss price expectations.
+6. Finally, if they're ready, discuss appointment scheduling.
+
+Keep your responses friendly, brief, and focused on one question at a time. Don't overwhelm the client with multiple questions in a single message.";
 
             // Build the payload with the system prompt and the client's message.
             var payload = new
             {
                 model = _model,
                 messages = conversationHistory
-
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
@@ -98,7 +96,8 @@ Do not ask for specific design details or reference photos at this time.";
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                throw new Exception($"OpenAI API request failed with status code {response.StatusCode}: {errorContent}");
+                throw new Exception(
+                    $"OpenAI API request failed with status code {response.StatusCode}: {errorContent}");
             }
 
             var responseContent = await response.Content.ReadAsStringAsync();
