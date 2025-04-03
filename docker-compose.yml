@@ -17,6 +17,8 @@ services:
       - ResendApiToken=${RESEND_API_TOKEN}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+
     volumes:
       - keys:/root/.aspnet/DataProtection-Keys
     depends_on:

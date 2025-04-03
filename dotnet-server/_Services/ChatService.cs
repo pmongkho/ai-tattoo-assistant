@@ -71,7 +71,7 @@ Guide the conversation naturally by asking ONE question at a time about the clie
 Follow this sequence of topics, but only move to the next topic after getting an answer to the current one:
 
 1. First, ask what subject matter they're interested in for their tattoo (e.g., portrait, animal, abstract design).
-2. Once you know the subject, ask which tattoo style they prefer (e.g., Traditional, Fine Line, Blackwork, Realism).
+2. Once you know the subject, ask which tattoo style they prefer (e.g., Black and Grey Realism, Japanese Traditional, Fine Line, Neo Traditional, Color).
 3. After learning the style, ask where on their body they'd like the tattoo placed.
 4. Then ask about the approximate size in inches they're considering.
 5. Next, discuss price expectations.
@@ -112,5 +112,73 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
 
             return chatResponse ?? string.Empty;
         }
+
+
+        public async Task<string> GetChatResponseWithImageAsync(List<ChatMessage> conversationHistory)
+        {
+            var url = "https://api.openai.com/v1/chat/completions";
+
+            // Build the payload with the conversation history
+            var messages = new List<object>();
+
+            foreach (var msg in conversationHistory)
+            {
+                if (msg.ImageUrl != null)
+                {
+                    // Include image URL for messages with images
+                    messages.Add(new
+                    {
+                        role = msg.Role,
+                        content = new object[]
+                        {
+                            new { type = "text", text = msg.Content },
+                            new { type = "image_url", image_url = new { url = msg.ImageUrl } }
+                        }
+                    });
+                }
+                else
+                {
+                    // Regular text-only message
+                    messages.Add(new
+                    {
+                        role = msg.Role,
+                        content = msg.Content
+                    });
+                }
+            }
+
+            var payload = new
+            {
+                model = _model,
+                messages = messages
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            // Send the request to OpenAI.
+            var response = await _httpClient.SendAsync(request);
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new Exception(
+                    $"OpenAI API request failed with status code {response.StatusCode}: {errorContent}");
+            }
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            // Parse the response JSON to extract the AI's reply.
+            using var jsonDoc = JsonDocument.Parse(responseContent);
+            var chatResponse = jsonDoc.RootElement
+                .GetProperty("choices")[0]
+                .GetProperty("message")
+                .GetProperty("content")
+                .GetString();
+
+            return chatResponse ?? string.Empty;
+        }
     }
 }
+

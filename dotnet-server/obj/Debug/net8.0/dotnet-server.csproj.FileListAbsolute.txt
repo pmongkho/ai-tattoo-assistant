@@ -128,3 +128,5 @@
 /Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/bin/Debug/net8.0/System.Management.dll
 /Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/bin/Debug/net8.0/runtimes/win/lib/net7.0/System.Management.dll
 /Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/bin/Debug/net8.0/firebase-adminsdk.json
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/bin/Debug/net8.0/Google.Apis.Storage.v1.dll
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/bin/Debug/net8.0/Google.Cloud.Storage.V1.dll

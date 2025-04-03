@@ -1,0 +1,136 @@
+Core Concept Recap:
+A platform where tattoo artists & clients connect through AI-driven consultations and book custom tattoo jobs. Artists can post tattoo jobs (flash) or respond to client requests.
+
+🧩 Database Schema (PostgreSQL)
+We'll keep this normalized and scalable:
+
+🧑‍🎨 users
+sql
+id UUID PRIMARY KEY,
+name TEXT,
+email TEXT UNIQUE,
+phone TEXT,
+role TEXT CHECK (role IN ('artist', 'client')),
+profile_image TEXT,
+created_at TIMESTAMP DEFAULT NOW()
+
+🏢 artist_profiles
+sql
+user_id UUID PRIMARY KEY REFERENCES users(id),
+company_name TEXT,
+styles TEXT[], -- ['blackwork', 'neo-traditional']
+hourly_rate NUMERIC,
+instagram_url TEXT,
+bio TEXT
+
+📋 consultations
+sql
+id UUID PRIMARY KEY,
+client_id UUID REFERENCES users(id),
+artist_id UUID REFERENCES users(id),
+style TEXT,
+body_part TEXT,
+image_url TEXT,
+size TEXT,
+price_expectation TEXT,
+availability TEXT,
+status TEXT CHECK (status IN ('pending', 'approved', 'rejected')) DEFAULT 'pending',
+submitted_at TIMESTAMP DEFAULT NOW()
+
+📦 tattoo_jobs
+sql
+id UUID PRIMARY KEY,
+created_by UUID REFERENCES users(id),
+type TEXT CHECK (type IN ('client_request', 'artist_offer')),
+title TEXT,
+description TEXT,
+style TEXT,
+image_url TEXT,
+price NUMERIC,
+is_booked BOOLEAN DEFAULT FALSE,
+created_at TIMESTAMP DEFAULT NOW()
+
+📅 appointments
+sql
+id UUID PRIMARY KEY,
+consultation_id UUID REFERENCES consultations(id),
+client_id UUID REFERENCES users(id),
+artist_id UUID REFERENCES users(id),
+scheduled_for TIMESTAMP,
+square_event_id TEXT, -- Optional
+status TEXT CHECK (status IN ('scheduled', 'completed', 'cancelled')) DEFAULT 'scheduled'
+
+🧭 Frontend Pages (Next.js / Angular)
+Page	Route	Purpose
+Home	/	Marketing + entry point
+Browse Tattoo Jobs	/jobs	Public marketplace
+Post a Job	/jobs/new	Artists or clients can post a tattoo job
+Artist Directory	/artists	Discoverable artist profiles
+Artist Profile	/artists/:id	Public-facing artist bio + job listings
+Consultation AI Form	/consult/:artistId	Smart form that triggers AI assistant
+Dashboard (Client)	/dashboard/client	Track jobs, consultations, appointments
+Dashboard (Artist)	/dashboard/artist	Manage bookings, jobs, consultations
+Appointment Calendar	/calendar	View/manage appointments
+Admin Login/Profile	/profile	Edit account info
+
+🌐 API Endpoints (Backend / .NET or Node)
+Method	Route	Description
+GET	/api/jobs	List tattoo jobs
+POST	/api/jobs	Create a job
+GET	/api/jobs/:id	Get job details
+POST	/api/consultations	Submit consultation
+GET	/api/consultations/:id	Get consultation status
+POST	/api/appointments	Book appointment
+GET	/api/appointments	View user appointments
+GET	/api/artists	List artist profiles
+GET	/api/artists/:id	Get artist detail
+POST	/api/users/login	Auth login
+POST	/api/users/register	Register client or artist
+
+🧱 Folder Structure (frontend)
+bash
+src/
+├── app/
+│   ├── pages/
+│   │   ├── index.tsx
+│   │   ├── jobs/
+│   │   ├── artists/
+│   │   ├── dashboard/
+│   │   └── consult/
+│   ├── components/
+│   ├── services/  # API calls
+│   └── lib/       # utils
+├── public/
+└── assets/
+
+🔗 Square API Integration
+Later, connect Square for:
+
+Booking appointments (appointments-api)
+
+Accepting deposits/payments
+
+Sending reminders via SMS/email
+
+You’ll store their event_id in the appointments table to sync statuses.
+
+✅ MVP Launch Plan
+✅ Build AI Consultation Tool + Booking Flow
+
+✅ Create Artist Profiles
+
+✅ Enable Posting Jobs (Artist/Client)
+
+✅ Launch Public Job Feed
+
+➕ Add appointment sync + payments via Square
+
+Would you like:
+
+A downloadable SQL file for this schema?
+
+Codebase starter (Next.js or Angular + .NET)?
+
+Design mockups for the artist dashboard?
+
+Let me know how far you want to take this — this could 100% become a polished startup.
