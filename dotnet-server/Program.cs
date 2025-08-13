@@ -10,6 +10,8 @@ using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using System.Linq; // for result.Errors.Select(...)
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +24,11 @@ builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddAuthenticationServices(builder.Configuration);
 builder.Services.AddFirebaseServices(builder.Configuration);
 builder.Services.AddApiServices();
+builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Square"));
+builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
+builder.Services.AddScoped<IConsultationService, ConsultationService>();
+builder.Services.AddScoped<IStorageService, FirebaseStorageService>();
+
 
 // Build the application
 var app = builder.Build();
@@ -32,11 +39,16 @@ app.ConfigureMiddleware(builder.Environment);
 // Apply database migrations at startup
 app.MigrateDatabase();
 
+await app.SeedArtistsAsync();
+await app.DumpArtistMappingsAsync();
+
 // Log configuration values for debugging
 app.LogConfigurationValues(builder.Configuration);
 
 // Run the application
 app.Run();
+
+
 
 // Extension methods for cleaner organization
 public static class ProgramExtensions
@@ -49,6 +61,21 @@ public static class ProgramExtensions
             .AddEnvironmentVariables()
             .AddEnvironmentVariables(prefix: "OpenAI__");
     }
+    
+    public static async Task DumpArtistMappingsAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var um = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var mappings = await um.Users
+            .Where(u => u.SquareArtistId != null)
+            .Select(u => new { u.Id, u.Email, u.FullName, u.SquareArtistId })
+            .ToListAsync();
+
+        Console.WriteLine("=== Known artist mappings (Id | Email | Name | SquareArtistId) ===");
+        foreach (var m in mappings)
+            Console.WriteLine($"{m.Id} | {m.Email} | {m.FullName} | {m.SquareArtistId}");
+    }
+
 
     public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
@@ -62,12 +89,6 @@ public static class ProgramExtensions
             .AddEntityFrameworkStores<ApplicationDbContext>()
             .AddDefaultTokenProviders();
 
-        // Configure Services
-        services.AddHttpClient<ChatService>(client =>
-        {
-            client.BaseAddress = new Uri("https://api.openai.com/");
-        });
-
         // Auth Service
         services.AddScoped<IAuthService, AuthService>();
 
@@ -75,7 +96,7 @@ public static class ProgramExtensions
         services.AddOptions();
         services.Configure<ResendClientOptions>(o =>
         {
-            o.ApiToken = Environment.GetEnvironmentVariable("ResendApiToken")!;
+            o.ApiToken = Environment.GetEnvironmentVariable("ResendApiToken")!; // Change back to this casing
         });
         services.AddHttpClient<ResendClient>();
         services.AddTransient<IResend, ResendClient>();
@@ -92,9 +113,9 @@ public static class ProgramExtensions
     {
         services.AddAuthentication(options =>
             {
-                options.DefaultScheme = "Cookies";
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = "Google";
+                options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultScheme             = JwtBearerDefaults.AuthenticationScheme;
             })
             .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
             {
@@ -211,11 +232,8 @@ public static class ProgramExtensions
             options.AddPolicy("AllowClients", policy =>
             {
                 policy.WithOrigins(
-                        "http://localhost:4200", 
-                        "http://localhost:5000",
-                        "http://localhost:80",
-                        "http://frontend",
-                        "http://backend:5000"
+                        "http://localhost:4200"
+                 
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod()
@@ -223,6 +241,42 @@ public static class ProgramExtensions
             });
         });
     }
+    
+    public static async Task SeedArtistsAsync(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        // TODO: replace with your real artist email + Square ID
+        var email = "artist@example.com";
+        var squareId = "TM5aja5TzIaHzSZl";
+
+        var artist = await userManager.FindByEmailAsync(email);
+        if (artist == null)
+        {
+            artist = new ApplicationUser
+            {
+                UserName = email,
+                Email = email,
+                FullName = "Seeded Artist",
+                SquareArtistId = squareId
+            };
+
+            var result = await userManager.CreateAsync(artist); // no password -> external login only
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    "Failed to seed artist user: " +
+                    string.Join(", ", result.Errors.Select(e => e.Description)));
+            }
+        }
+        else if (artist.SquareArtistId != squareId)
+        {
+            artist.SquareArtistId = squareId;
+            await userManager.UpdateAsync(artist);
+        }
+    }
+
 
     public static void ConfigureMiddleware(this WebApplication app, IHostEnvironment env)
     {
@@ -265,6 +319,8 @@ public static class ProgramExtensions
     public static void LogConfigurationValues(this WebApplication app, IConfiguration configuration)
     {
         Console.WriteLine($"OpenAI:ApiKey exists: {!string.IsNullOrEmpty(configuration["OpenAI:ApiKey"])}");
+        Console.WriteLine($"Environment Variable OPENAI_API_KEY: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("OPENAI_API_KEY"))}");
+
         Console.WriteLine($"ConnectionStrings:DefaultConnection: {configuration.GetConnectionString("DefaultConnection")}");
         Console.WriteLine($"JWT_SECRET_KEY exists: {!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("JWT_SECRET_KEY"))}");
         Console.WriteLine($"JWT_ISSUER: {Environment.GetEnvironmentVariable("JWT_ISSUER")}");

@@ -26,13 +26,13 @@ namespace DotNet.Controllers
         }
 
         [HttpPost("start")]
-        [Authorize]
+        [AllowAnonymous] // ✨ allow public chat start
         public async Task<IActionResult> StartConsultation([FromBody] StartConsultationRequest request)
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var consultationId = await _consultationService.StartConsultationAsync(userId, request.ArtistId);
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+                var consultationId = await _consultationService.StartConsultationAsync(userId, request.ArtistId, request.SquareArtistId);
                 return Ok(new { consultationId });
             }
             catch (KeyNotFoundException ex)
@@ -46,13 +46,14 @@ namespace DotNet.Controllers
             }
         }
 
-        [HttpPost("{id}/message")]
-        [Authorize]
+        [HttpPost("{id:guid}/message")]
+        [AllowAnonymous] // ✨ allow public chat start
+
         public async Task<IActionResult> SendMessage(Guid id, [FromBody] ConsultationMessageRequest request)
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
                 var response = await _consultationService.SendMessageAsync(id, userId, request.Message);
                 return Ok(new { response });
             }
@@ -67,13 +68,13 @@ namespace DotNet.Controllers
             }
         }
 
-        [HttpPost("{id}/message-with-image")]
-        [Authorize]
+        [HttpPost("{id:guid}/message-with-image")]
+        [AllowAnonymous] // ✨ allow public chat start
         public async Task<IActionResult> SendMessageWithImage(Guid id, [FromForm] ConsultationMessageWithImageRequest request)
         {
             try
             {
-                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
                 var response = await _consultationService.SendMessageWithImageAsync(id, userId, request.Message, request.Image);
                 return Ok(new { response });
             }
@@ -150,5 +151,32 @@ namespace DotNet.Controllers
                 return StatusCode(500, "Error updating consultation status");
             }
         }
+
+        [HttpPost("{id}/submit-to-square")]
+        [Authorize]
+        public async Task<IActionResult> SubmitToSquare(Guid id)
+        {
+            try
+            {
+                var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                var appointmentId = await _consultationService.SubmitToSquareAsync(id, userId);
+                return Ok(new { appointmentId });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                return NotFound(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                // Missing info / validation errors
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error submitting consultation to Square");
+                return StatusCode(500, "Error submitting consultation to Square");
+            }
+        }
+        
     }
 }

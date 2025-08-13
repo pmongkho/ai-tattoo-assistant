@@ -10,6 +10,8 @@ namespace DotNet.Models
     {
         // Map to your SQL schema
         public string FullName { get; set; } = string.Empty;
+        public string? SquareArtistId { get; set; }   // <-- add this
+
         
         // Override email to match your schema
         [PersonalData]

@@ -34,7 +34,7 @@ export const appConfig: ApplicationConfig = {
 		importProvidersFrom(BrowserModule, FormsModule),
 		provideZoneChangeDetection({ eventCoalescing: true }),
 		provideRouter(routes),
-		provideClientHydration(withEventReplay()),
+		// provideClientHydration(withEventReplay()),
 		provideFirebaseApp(() =>
 			initializeApp({
 				projectId: 'ai-tattoo-assistant',

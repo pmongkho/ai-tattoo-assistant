@@ -1,5 +1,6 @@
 // DotNet/Models/Requests/ConsultationRequests.cs
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Http;
 
 namespace DotNet.Models.Requests
@@ -8,6 +9,10 @@ namespace DotNet.Models.Requests
     {
         [Required]
         public string ArtistId { get; set; }
+        
+        // NEW: allow passing a Square artist id from the client
+        [JsonPropertyName("squareArtistId")]
+        public string? SquareArtistId { get; set; }
     }
 
     public class ConsultationMessageRequest

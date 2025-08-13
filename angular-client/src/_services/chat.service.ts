@@ -1,22 +1,60 @@
 import { Injectable } from '@angular/core'
 import { HttpClient } from '@angular/common/http'
-import { Observable } from 'rxjs'
+import { map, Observable } from 'rxjs'
 import { environment } from '../environments/environment'
 
-
-export interface ChatMessage {
-	message: string
+export interface StartResponse {
+	consultationId: string
+	message: string // assistant's first question
 }
 
-@Injectable({
-	providedIn: 'root',
-})
-export class ChatService {
+export interface MessageResponse {
+	reply: string // assistant reply
+}
+
+export interface ConsultationDto {
+	id: string
+	style: string | null
+	bodyPart: string | null
+	imageUrl: string | null
+	size: string | null
+	priceExpectation: string | null
+	availability: string | null
+	status: string | null
+	chatHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+}
+
+@Injectable({ providedIn: 'root' })
+export class ChatApiService {
 	private apiUrl = environment.apiUrl
 
 	constructor(private http: HttpClient) {}
 
-	sendMessage(message: string): Observable<any> {
-		return this.http.post(`${this.apiUrl}/tattoo/consult`, {Message:message})
+	startConsultation(
+		artistId: string
+	): Observable<{ id: string; message: string }> {
+		return this.http
+			.post<StartResponse>(`${this.apiUrl}/consultations/start`, {
+				squareArtistId: 'TM5aja5TzIaHzSZl',
+				artistId:null,
+			})
+			.pipe(
+				map((r) => ({ id: r.consultationId ?? '', message: r.message ?? '' }))
+			)
+	}
+
+	sendMessage(consultationId: string, message: string): Observable<string> {
+		return this.http
+			.post<MessageResponse>(
+				`${this.apiUrl}/consultations/${consultationId}/message`,
+				{ message }
+			)
+			.pipe(map((r) => r.reply ?? ''))
+	}
+
+	getConsultation(consultationId: string): Observable<ConsultationDto> {
+		return this.http.get<ConsultationDto>(
+			`${this.apiUrl}consultations/${consultationId}`
+		)
 	}
 }

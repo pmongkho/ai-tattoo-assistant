@@ -1,71 +1,93 @@
-import {
-	Component,
-	ViewChild,
-	ElementRef,
-	AfterViewChecked,
-} from '@angular/core'
-import { CommonModule } from '@angular/common'
-import { FormsModule } from '@angular/forms'
-import { ChatService } from '../../_services/chat.service'
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core'
+import { CommonModule } from '@angular/common' // for *ngFor, *ngIf, [ngClass]
+import { FormsModule } from '@angular/forms' // for [(ngModel)]
+import { firstValueFrom } from 'rxjs'
+import {ChatApiService} from '../../_services/chat.service'
+import {environment} from '../../environments/environment'
 
-interface Message {
-	text: string
-	sender: 'user' | 'ai'
-}
+
+type Msg = { sender: 'user' | 'assistant'; text: string }
 
 @Component({
 	selector: 'app-chat',
 	standalone: true,
 	imports: [CommonModule, FormsModule],
 	templateUrl: './chat.component.html',
-	styleUrls: ['./chat.component.css'],
 })
-export class ChatComponent implements AfterViewChecked {
-	@ViewChild('messageContainer') private messageContainer!: ElementRef // Add the non-null assertion operator
+export class ChatComponent implements OnInit {
+	@ViewChild('messageContainer') messageContainer!: ElementRef<HTMLDivElement>
 
-	messages: Message[] = []
-	userInput = ''
+	messages: Msg[] = []
+	userInput: string = ''
+	sending = false
+	consultationId: string | null = null
 
-	constructor(private chatService: ChatService) {}
+	constructor(private chatApi: ChatApiService) {}
 
-	ngAfterViewChecked() {
-		this.scrollToBottom()
+	async ngOnInit() {
+		await this.startConversation()
 	}
 
-	scrollToBottom(): void {
+	private async startConversation() {
+		const artistId = environment['artistId'] || 'default-artist'
 		try {
-			if (this.messageContainer) {
-				// Add a check to ensure messageContainer exists
-				this.messageContainer.nativeElement.scrollTop =
-					this.messageContainer.nativeElement.scrollHeight
-			}
-		} catch (err) {
-			console.error('Error scrolling to bottom:', err)
+			const { id, message } = await firstValueFrom(
+				this.chatApi.startConsultation(artistId)
+			)
+			this.consultationId = id || null
+			this.messages = []
+			this.pushAssistant(
+				message ||
+					'Hi! What subject or theme are you thinking of for your tattoo?'
+			)
+		} catch {
+			this.pushAssistant(
+				'Sorry—could not start the chat. Please refresh and try again.'
+			)
 		}
 	}
 
-	sendMessage(): void {
-		if (!this.userInput.trim()) return
+	// HTML calls this
+	async sendMessage() {
+		const text = (this.userInput || '').trim()
+		if (!text || !this.consultationId || this.sending) return
 
-		// Add user's message locally
-		this.messages.push({ text: this.userInput, sender: 'user' })
+		this.sending = true
+		this.pushUser(text)
+		this.userInput = ''
 
-		const userMessage = this.userInput
-		this.userInput = '' // Clear input immediately for better UX
+		try {
+			const reply = await firstValueFrom(
+				this.chatApi.sendMessage(this.consultationId, text)
+			)
+			this.pushAssistant(reply || 'Thanks! (No reply text returned.)')
+		} catch {
+			this.pushAssistant('Oops—something went wrong. Please try again.')
+		} finally {
+			this.sending = false
+		}
+	}
 
-		// Call the .NET API
-		this.chatService.sendMessage(userMessage).subscribe({
-			next: (data) => {
-				this.messages.push({ text: data.response, sender: 'ai' })
-				// Scroll happens automatically due to ngAfterViewChecked
-			},
-			error: (err) => {
-				console.error(err)
-				this.messages.push({
-					text: 'Error: Unable to get a response.',
-					sender: 'ai',
-				})
-			},
-		})
+	// Optional: hook up to a “Reset” button if you add one later
+	async resetConversation() {
+		this.consultationId = null
+		this.messages = []
+		await this.startConversation()
+	}
+
+	private pushAssistant(text: string) {
+		if (!text) return
+		this.messages.push({ sender: 'assistant', text })
+		queueMicrotask(() => this.scrollToBottom())
+	}
+
+	private pushUser(text: string) {
+		this.messages.push({ sender: 'user', text })
+		queueMicrotask(() => this.scrollToBottom())
+	}
+
+	private scrollToBottom() {
+		const el = this.messageContainer?.nativeElement
+		if (el) el.scrollTop = el.scrollHeight
 	}
 }

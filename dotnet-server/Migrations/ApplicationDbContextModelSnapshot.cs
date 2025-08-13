@@ -80,6 +80,9 @@ namespace dotnet_server.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
+                    b.Property<string>("SquareArtistId")
+                        .HasColumnType("text");
+
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -99,6 +102,9 @@ namespace dotnet_server.Migrations
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
+
+                    b.HasIndex("SquareArtistId")
+                        .HasDatabaseName("IX_AspNetUsers_SquareArtistId");
 
                     b.ToTable("AspNetUsers", null, t =>
                         {
@@ -183,6 +189,9 @@ namespace dotnet_server.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ApplicationUserId")
+                        .HasColumnType("text");
+
                     b.Property<string>("ArtistId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -203,6 +212,14 @@ namespace dotnet_server.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("ContactFullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContactPhone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("ImageUrl")
                         .IsRequired()
                         .HasColumnType("text");
@@ -212,6 +229,14 @@ namespace dotnet_server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Size")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SquareAppointmentId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SquareCustomerId")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -227,6 +252,8 @@ namespace dotnet_server.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApplicationUserId");
 
                     b.HasIndex("ArtistId");
 
@@ -506,8 +533,12 @@ namespace dotnet_server.Migrations
 
             modelBuilder.Entity("DotNet.Models.Consultation", b =>
                 {
-                    b.HasOne("DotNet.Models.ApplicationUser", "Artist")
+                    b.HasOne("DotNet.Models.ApplicationUser", null)
                         .WithMany("ArtistConsultations")
+                        .HasForeignKey("ApplicationUserId");
+
+                    b.HasOne("DotNet.Models.ApplicationUser", "Artist")
+                        .WithMany()
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();

@@ -7,6 +7,8 @@ namespace DotNet.Models
     public class StartConsultationRequest
     {
         public string ArtistId { get; set; }
+        public string? SquareArtistId { get; set; }  // Square staff id
+
     }
 
     public class ConsultationMessageRequest

@@ -82,6 +82,17 @@ namespace DotNet.Data
                 .WithMany(u => u.ArtistAppointments)
                 .HasForeignKey(a => a.ArtistId)
                 .OnDelete(DeleteBehavior.Restrict);
+            
+            // Optional index (not unique in case a Square account is shared/misconfigured)
+            builder.Entity<ApplicationUser>()
+                .HasIndex(u => u.SquareArtistId)
+                .HasDatabaseName("IX_AspNetUsers_SquareArtistId");
+            builder.Entity<Consultation>()
+                .HasOne(c => c.Artist)
+                .WithMany()
+                .HasForeignKey(c => c.ArtistId)
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Restrict);
                 
             // Add check constraints
             builder.Entity<ApplicationUser>()

@@ -14,7 +14,7 @@ services:
       - JwtSettings__SecretKey=${JWT_SECRET_KEY}
       - JwtSettings__Issuer=${JWT_ISSUER}
       - JwtSettings__Audience=${JWT_AUDIENCE}
-      - ResendApiToken=${RESEND_API_TOKEN}
+      - ResendApiToken=${ResendApiToken}
       - DB_HOST=${DB_HOST}
       - DB_PORT=${DB_PORT}
       - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
@@ -35,7 +35,7 @@ services:
         - API_URL_DEV=${ANGULAR_API_URL_DEV}
         - API_URL_PROD=${ANGULAR_API_URL_PROD}
         - OPENAI_API_KEY=${OPENAI_API_KEY}
-        - RESEND_API_TOKEN=${RESEND_API_TOKEN}
+        - ResendApiToken=${ResendApiToken}
     ports:
       - '4200:80'
     depends_on:
@@ -54,7 +54,7 @@ services:
     ports:
       - '5433:5432'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}']
       interval: 5s
       timeout: 5s
       retries: 5

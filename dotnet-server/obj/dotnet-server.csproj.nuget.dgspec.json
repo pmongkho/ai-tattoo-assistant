@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/dotnet-server.csproj": {}
+    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {}
   },
   "projects": {
-    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/dotnet-server.csproj": {
+    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/dotnet-server.csproj",
+        "projectUniqueName": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
         "projectName": "dotnet-server",
-        "projectPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/dotnet-server.csproj",
+        "projectPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
         "packagesPath": "/Users/a_mac/.nuget/packages/",
-        "outputPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-assistant/dotnet-server/obj/",
+        "outputPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/a_mac/.nuget/NuGet/NuGet.Config"
@@ -97,6 +97,10 @@
             "Resend": {
               "target": "Package",
               "version": "[0.0.13, )"
+            },
+            "Square": {
+              "target": "Package",
+              "version": "[42.0.1, )"
             },
             "Swashbuckle.AspNetCore": {
               "target": "Package",

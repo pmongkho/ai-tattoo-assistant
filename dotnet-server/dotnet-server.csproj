@@ -28,6 +28,7 @@
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.6.1" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.2" />
     <PackageReference Include="Resend" Version="0.0.13" />
+    <PackageReference Include="Square" Version="42.0.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.1" />
   </ItemGroup>
 
