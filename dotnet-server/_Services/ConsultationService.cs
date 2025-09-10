@@ -217,9 +217,12 @@ When all are collected, confirm the summary and say:
                 if (artistExists == null)
                     throw new ArgumentException("Artist not found");
 
-                var clientExists = await _userManager.FindByIdAsync(userId);
-                if (clientExists == null)
-                    throw new ArgumentException("Client not found");
+                if (!string.IsNullOrEmpty(userId))
+                {
+                    var clientExists = await _userManager.FindByIdAsync(userId);
+                    if (clientExists == null)
+                        throw new ArgumentException("Client not found");
+                }
 
                 var c = new Consultation
                 {
