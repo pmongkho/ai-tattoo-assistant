@@ -183,6 +183,27 @@ namespace dotnet_server.Migrations
                     b.ToTable("ArtistProfiles");
                 });
 
+            modelBuilder.Entity("DotNet.Models.ClientProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("PhoneNumber")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClientProfiles");
+                });
+
             modelBuilder.Entity("DotNet.Models.Consultation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -211,6 +232,9 @@ namespace dotnet_server.Migrations
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<Guid?>("ClientProfileId")
+                        .HasColumnType("uuid");
 
                     b.Property<string>("ContactFullName")
                         .IsRequired()
@@ -258,6 +282,8 @@ namespace dotnet_server.Migrations
                     b.HasIndex("ArtistId");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("ClientProfileId");
 
                     b.ToTable("Consultations", t =>
                         {
@@ -545,6 +571,11 @@ namespace dotnet_server.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("DotNet.Models.ClientProfile", "ClientProfile")
+                        .WithMany()
+                        .HasForeignKey("ClientProfileId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("DotNet.Models.ApplicationUser", "Client")
                         .WithMany("ClientConsultations")
                         .HasForeignKey("ClientId")
@@ -554,6 +585,8 @@ namespace dotnet_server.Migrations
                     b.Navigation("Artist");
 
                     b.Navigation("Client");
+
+                    b.Navigation("ClientProfile");
                 });
 
             modelBuilder.Entity("DotNet.Models.TattooJob", b =>
