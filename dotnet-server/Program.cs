@@ -86,7 +86,17 @@ public static class ProgramExtensions
         // Configure database
         var connectionString = configuration.GetConnectionString("DefaultConnection");
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                options.UseInMemoryDatabase("InMemoryDb");
+                Console.WriteLine("No connection string found. Using in-memory database.");
+            }
+            else
+            {
+                options.UseNpgsql(connectionString);
+            }
+        });
 
         // Configure Identity
         services.AddIdentity<ApplicationUser, IdentityRole>()
@@ -310,8 +320,15 @@ public static class ProgramExtensions
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
-                context.Database.Migrate();
-                Console.WriteLine("Database migrations applied successfully.");
+                if (context.Database.IsRelational())
+                {
+                    context.Database.Migrate();
+                    Console.WriteLine("Database migrations applied successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("In-memory database detected; skipping migrations.");
+                }
             }
             catch (Exception ex)
             {
