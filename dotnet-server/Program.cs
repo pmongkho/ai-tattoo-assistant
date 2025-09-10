@@ -12,7 +12,14 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Linq; // for result.Errors.Select(...)
 
+using DotNetEnv;
 
+
+var envPath = Path.Combine(Directory.GetCurrentDirectory(), "..", ".env");
+if (File.Exists(envPath))
+{
+    Env.Load(envPath);
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,8 +101,9 @@ public static class ProgramExtensions
             {
                 var uri = new Uri(connectionString);
                 var userInfo = uri.UserInfo.Split(':', 2);
+                var port = uri.Port > 0 ? uri.Port : 5432;
                 connectionString =
-                    $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};" +
+                    $"Host={uri.Host};Port={port};Database={uri.LocalPath.TrimStart('/')};" +
                     $"Username={userInfo[0]};Password={userInfo.ElementAtOrDefault(1)};" +
                     "Pooling=true;SSL Mode=Require;Trust Server Certificate=true";
             }
