@@ -38,13 +38,17 @@
         "net8.0": {
           "targetAlias": "net8.0",
           "dependencies": {
+            "Azure.Storage.Blobs": {
+              "target": "Package",
+              "version": "[12.18.0, )"
+            },
+            "DotNetEnv": {
+              "target": "Package",
+              "version": "[3.0.0, )"
+            },
             "FirebaseAdmin": {
               "target": "Package",
               "version": "[3.1.0, )"
-            },
-            "Google.Cloud.Storage.V1": {
-              "target": "Package",
-              "version": "[4.11.0, )"
             },
             "Microsoft.AspNetCore.Authentication.Google": {
               "target": "Package",
@@ -73,6 +77,10 @@
             "Microsoft.EntityFrameworkCore.Design": {
               "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
               "suppressParent": "All",
+              "target": "Package",
+              "version": "[8.0.3, )"
+            },
+            "Microsoft.EntityFrameworkCore.InMemory": {
               "target": "Package",
               "version": "[8.0.3, )"
             },
