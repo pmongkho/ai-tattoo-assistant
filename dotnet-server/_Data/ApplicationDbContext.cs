@@ -99,7 +99,9 @@ namespace DotNet.Data
                 .HasCheckConstraint("CK_Users_UserRole", "\"UserRole\" IN ('artist', 'client')");
                 
             builder.Entity<Consultation>()
-                .HasCheckConstraint("CK_Consultations_Status", "\"Status\" IN ('pending', 'approved', 'rejected')");
+                .HasCheckConstraint(
+                    "CK_Consultations_Status",
+                    "\"Status\" IN ('draft', 'awaiting-review', 'submitted-to-square', 'approved', 'rejected')");
                 
             builder.Entity<TattooJob>()
                 .HasCheckConstraint("CK_TattooJobs_Type", "\"Type\" IN ('client_request', 'artist_offer')");
