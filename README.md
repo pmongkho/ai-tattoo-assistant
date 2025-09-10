@@ -39,6 +39,9 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 
 2. Set up your environment:
    - Copy `sample.env` to `.env` and fill in necessary values (e.g. DB connection, OpenAI key).
+   - Provide Azure Blob Storage settings via environment variables or `appsettings.*.json`:
+     - `AZURE_STORAGE_CONNECTION_STRING` / `AzureStorage:ConnectionString`
+     - `AZURE_STORAGE_CONTAINER` / `AzureStorage:ContainerName`
 
 3. Run the app with Docker:
    ```bash

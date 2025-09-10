@@ -34,7 +34,7 @@ builder.Services.AddApiServices();
 builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Square"));
 builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
 builder.Services.AddScoped<IConsultationService, ConsultationService>();
-builder.Services.AddScoped<IStorageService, FirebaseStorageService>();
+builder.Services.AddScoped<IStorageService, AzureBlobStorageService>();
 builder.Services.AddControllers()
     .AddJsonOptions(opts => opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 
@@ -199,21 +199,12 @@ public static class ProgramExtensions
             string filePath = Path.Combine(Directory.GetCurrentDirectory(), "firebase-adminsdk.json");
             if (File.Exists(filePath))
             {
-                // Get the bucket name from environment variable or configuration
-                string bucketName = Environment.GetEnvironmentVariable("FIREBASE_STORAGE_BUCKET") ?? 
-                                    configuration["Firebase:StorageBucket"] ?? 
-                                    "ai-tattoo-assistant.firebasestorage.app";
-                
-                // Initialize Firebase with just the credential
                 FirebaseApp.Create(new AppOptions
                 {
                     Credential = GoogleCredential.FromFile(filePath)
                 });
-                
-                // Store the bucket name in configuration for the FirebaseStorageService to use
-                configuration["Firebase:StorageBucket"] = bucketName;
-                
-                Console.WriteLine($"Firebase Admin SDK initialized successfully with bucket: {bucketName}");
+
+                Console.WriteLine("Firebase Admin SDK initialized successfully.");
             }
             else
             {
