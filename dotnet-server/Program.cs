@@ -28,7 +28,8 @@ builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Squa
 builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
 builder.Services.AddScoped<IConsultationService, ConsultationService>();
 builder.Services.AddScoped<IStorageService, FirebaseStorageService>();
-
+builder.Services.AddControllers()
+    .AddJsonOptions(opts => opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 
 // Build the application
 var app = builder.Build();

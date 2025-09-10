@@ -30,14 +30,14 @@ export class ChatApiService {
 
 	constructor(private http: HttpClient) {}
 
-	startConsultation(
-		artistId: string
-	): Observable<{ id: string; message: string }> {
+	startConsultation(artistId: string) {
+		const body = {
+			artistId, // <-- real value
+			squareArtistId: 'TM5aja5TzIaHzSZl',
+		}
+
 		return this.http
-			.post<StartResponse>(`${this.apiUrl}/consultations/start`, {
-				squareArtistId: 'TM5aja5TzIaHzSZl',
-				artistId:null,
-			})
+			.post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
 			.pipe(
 				map((r) => ({ id: r.consultationId ?? '', message: r.message ?? '' }))
 			)
