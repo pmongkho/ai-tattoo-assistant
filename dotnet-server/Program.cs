@@ -57,7 +57,10 @@ public static class ProgramExtensions
     public static void ConfigureAppConfiguration(this WebApplicationBuilder builder)
     {
         builder.Configuration
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            // Make the base configuration file optional so deployments without
+            // an `appsettings.json` do not crash. Environment-specific files
+            // and environment variables will still be loaded if present.
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
             .AddEnvironmentVariables()
             .AddEnvironmentVariables(prefix: "OpenAI__");
