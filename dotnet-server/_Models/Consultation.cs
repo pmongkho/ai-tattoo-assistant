@@ -13,8 +13,12 @@ namespace DotNet.Models
         public Guid Id { get; set; }
 
         [ForeignKey("Client")]
-        public string ClientId { get; set; } = string.Empty;
-        public virtual ApplicationUser Client { get; set; } = null!;
+        public string? ClientId { get; set; }
+        public virtual ApplicationUser? Client { get; set; } = null!;
+
+        [ForeignKey("ClientProfile")]
+        public Guid? ClientProfileId { get; set; }
+        public virtual ClientProfile? ClientProfile { get; set; }
 
 
         [ForeignKey("Artist")]
