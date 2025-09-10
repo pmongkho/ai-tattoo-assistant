@@ -1,9 +1,13 @@
 using System;
+using DotNet.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace dotnet_server.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20250910235000_AddClientProfile")]
     public partial class AddClientProfile : Migration
     {
         /// <inheritdoc />
