@@ -213,8 +213,13 @@ When all are collected, confirm the summary and say:
             {
 
                 var resolvedArtistId = await ResolveArtistIdAsync(artistId, squareArtistId);
-                if (string.IsNullOrWhiteSpace(resolvedArtistId))
-                    throw new ArgumentException("Unknown artist. Provide a valid artistId or squareArtistId.");
+                var artistExists = await _userManager.FindByIdAsync(resolvedArtistId);
+                if (artistExists == null)
+                    throw new ArgumentException("Artist not found");
+
+                var clientExists = await _userManager.FindByIdAsync(userId);
+                if (clientExists == null)
+                    throw new ArgumentException("Client not found");
 
                 var c = new Consultation
                 {
@@ -238,6 +243,47 @@ When all are collected, confirm the summary and say:
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error starting consultation");
+                throw;
+            }
+        }
+
+        public async Task<Guid> StartExternalConsultationAsync(Guid clientProfileId, string artistId, string? squareArtistId)
+        {
+            try
+            {
+                var resolvedArtistId = await ResolveArtistIdAsync(artistId, squareArtistId);
+                var artistExists = await _userManager.FindByIdAsync(resolvedArtistId);
+                if (artistExists == null)
+                    throw new ArgumentException("Artist not found");
+
+                var clientProfile = await _context.ClientProfiles.FirstOrDefaultAsync(c => c.Id == clientProfileId)
+                                    ?? throw new ArgumentException("Client not found");
+
+                var c = new Consultation
+                {
+                    Id = Guid.NewGuid(),
+                    ClientId = null,
+                    ClientProfileId = clientProfile.Id,
+                    ArtistId = resolvedArtistId,
+                    ContactFullName = clientProfile.FullName ?? string.Empty,
+                    ContactPhone = clientProfile.PhoneNumber ?? string.Empty,
+                    Status = "draft",
+                    SubmittedAt = DateTime.UtcNow,
+                    ChatHistory = "[]"
+                };
+
+                var chatHistory = new List<ChatMessage>();
+                var firstQ = BuildNextQuestion(c);
+                chatHistory.Add(new ChatMessage("assistant", firstQ));
+                c.ChatHistory = JsonSerializer.Serialize(chatHistory);
+
+                _context.Consultations.Add(c);
+                await _context.SaveChangesAsync();
+                return c.Id;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error starting external consultation");
                 throw;
             }
         }
@@ -282,6 +328,43 @@ When all are collected, confirm the summary and say:
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error sending message");
+                throw;
+            }
+        }
+
+        public async Task<string> SendExternalMessageAsync(Guid consultationId, Guid clientProfileId, string message)
+        {
+            try
+            {
+                var consultation = await _context.Consultations
+                    .FirstOrDefaultAsync(c => c.Id == consultationId && c.ClientProfileId == clientProfileId)
+                    ?? throw new KeyNotFoundException("Consultation not found");
+
+                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
+                    ? new List<ChatMessage>()
+                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
+                chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+
+                UpdateConsultationFromChat(consultation, chatHistory);
+                PersistContactFromChat(consultation);
+
+                var nextQ = BuildNextQuestion(consultation);
+                var aiResponse = nextQ;
+
+                chatHistory.Add(new ChatMessage("assistant", aiResponse));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+
+                UpdateStatusIfComplete(consultation);
+                await _context.SaveChangesAsync();
+
+                await AutoSubmitIfReadyAsync(consultation);
+                await _context.SaveChangesAsync();
+
+                return aiResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending external message");
                 throw;
             }
         }
@@ -347,6 +430,55 @@ When all are collected, confirm the summary and say:
             }
         }
 
+        public async Task<string> SendExternalMessageWithImageAsync(Guid consultationId, Guid clientProfileId, string message, IFormFile image)
+        {
+            try
+            {
+                var consultation = await _context.Consultations
+                    .FirstOrDefaultAsync(c => c.Id == consultationId && c.ClientProfileId == clientProfileId)
+                    ?? throw new KeyNotFoundException("Consultation not found");
+
+                string imageUrl = null;
+
+                if (image != null)
+                {
+                    imageUrl = await _storageService.UploadFileAsync(image);
+                    consultation.ImageUrl = imageUrl;
+                }
+
+                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
+                    ? new List<ChatMessage>()
+                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
+
+                if (imageUrl != null)
+                    chatHistory.Add(new ChatMessage("user", message ?? "Here's a reference image", imageUrl));
+                else
+                    chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+
+                UpdateConsultationFromChat(consultation, chatHistory);
+                PersistContactFromChat(consultation);
+
+                var nextQ = BuildNextQuestion(consultation);
+                var aiResponse = nextQ;
+
+                chatHistory.Add(new ChatMessage("assistant", aiResponse));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+
+                UpdateStatusIfComplete(consultation);
+                await _context.SaveChangesAsync();
+
+                await AutoSubmitIfReadyAsync(consultation);
+                await _context.SaveChangesAsync();
+
+                return aiResponse;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error sending external message with image");
+                throw;
+            }
+        }
+
         public async Task<ConsultationDto> GetConsultationAsync(Guid consultationId, string userId)
         {
             try
@@ -396,6 +528,59 @@ When all are collected, confirm the summary and say:
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting consultation");
+                throw;
+            }
+        }
+
+        public async Task<ConsultationDto> GetExternalConsultationAsync(Guid consultationId, Guid clientProfileId)
+        {
+            try
+            {
+                var consultation = await _context.Consultations
+                    .Include(c => c.ClientProfile)
+                    .Include(c => c.Artist)
+                    .FirstOrDefaultAsync(c => c.Id == consultationId && c.ClientProfileId == clientProfileId)
+                    ?? throw new KeyNotFoundException("Consultation not found");
+
+                var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
+                var clientChatHistory = chatHistory
+                    .Where(m => m.Role != "system")
+                    .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
+                    .ToList();
+
+                return new ConsultationDto
+                {
+                    Id = consultation.Id,
+                    Client = new UserDto
+                    {
+                        Id = consultation.ClientProfileId.ToString(),
+                        FullName = consultation.ClientProfile?.FullName ?? string.Empty,
+                        Email = consultation.ClientProfile?.Email ?? string.Empty,
+                        PhoneNumber = consultation.ClientProfile?.PhoneNumber ?? string.Empty,
+                        ProfileImageUrl = string.Empty
+                    },
+                    Artist = new UserDto
+                    {
+                        Id = consultation.Artist.Id,
+                        FullName = consultation.Artist.FullName,
+                        Email = consultation.Artist.Email,
+                        PhoneNumber = consultation.Artist.PhoneNumber,
+                        ProfileImageUrl = consultation.Artist.ProfileImageUrl
+                    },
+                    Style = consultation.Style,
+                    BodyPart = consultation.BodyPart,
+                    ImageUrl = consultation.ImageUrl,
+                    Size = consultation.Size,
+                    PriceExpectation = consultation.PriceExpectation,
+                    Availability = consultation.Availability,
+                    Status = consultation.Status,
+                    SubmittedAt = consultation.SubmittedAt,
+                    ChatHistory = clientChatHistory
+                };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting external consultation");
                 throw;
             }
         }
@@ -456,6 +641,67 @@ When all are collected, confirm the summary and say:
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting user consultations");
+                throw;
+            }
+        }
+
+        public async Task<List<ConsultationDto>> GetExternalClientConsultationsAsync(Guid clientProfileId)
+        {
+            try
+            {
+                var consultations = await _context.Consultations
+                    .Include(c => c.ClientProfile)
+                    .Include(c => c.Artist)
+                    .Where(c => c.ClientProfileId == clientProfileId)
+                    .OrderByDescending(c => c.SubmittedAt)
+                    .ToListAsync();
+
+                var consultationDtos = new List<ConsultationDto>();
+
+                foreach (var consultation in consultations)
+                {
+                    var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
+                    var clientChatHistory = chatHistory
+                        .Where(m => m.Role != "system")
+                        .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
+                        .ToList();
+
+                    consultationDtos.Add(new ConsultationDto
+                    {
+                        Id = consultation.Id,
+                        Client = new UserDto
+                        {
+                            Id = consultation.ClientProfileId.ToString(),
+                            FullName = consultation.ClientProfile?.FullName ?? string.Empty,
+                            Email = consultation.ClientProfile?.Email ?? string.Empty,
+                            PhoneNumber = consultation.ClientProfile?.PhoneNumber ?? string.Empty,
+                            ProfileImageUrl = string.Empty
+                        },
+                        Artist = new UserDto
+                        {
+                            Id = consultation.Artist.Id,
+                            FullName = consultation.Artist.FullName,
+                            Email = consultation.Artist.Email,
+                            PhoneNumber = consultation.Artist.PhoneNumber,
+                            ProfileImageUrl = consultation.Artist.ProfileImageUrl
+                        },
+                        Style = consultation.Style,
+                        BodyPart = consultation.BodyPart,
+                        ImageUrl = consultation.ImageUrl,
+                        Size = consultation.Size,
+                        PriceExpectation = consultation.PriceExpectation,
+                        Availability = consultation.Availability,
+                        Status = consultation.Status,
+                        SubmittedAt = consultation.SubmittedAt,
+                        ChatHistory = clientChatHistory
+                    });
+                }
+
+                return consultationDtos;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting external client consultations");
                 throw;
             }
         }

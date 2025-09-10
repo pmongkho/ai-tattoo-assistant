@@ -35,6 +35,7 @@ builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Squa
 builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
 builder.Services.AddScoped<IConsultationService, ConsultationService>();
 builder.Services.AddScoped<IStorageService, AzureBlobStorageService>();
+builder.Services.AddScoped<IMessagingIntegrationService, MessagingIntegrationService>();
 builder.Services.AddControllers()
     .AddJsonOptions(opts => opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
 

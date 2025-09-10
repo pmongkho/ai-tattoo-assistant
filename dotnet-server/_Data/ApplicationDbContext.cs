@@ -18,6 +18,7 @@ namespace DotNet.Data
         public DbSet<TattooJob> TattooJobs { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<UserImage> UserImages { get; set; }
+        public DbSet<ClientProfile> ClientProfiles { get; set; }
         
         protected override void OnModelCreating(ModelBuilder builder)
         {
@@ -49,6 +50,12 @@ namespace DotNet.Data
                 .HasOne(c => c.Client)
                 .WithMany(u => u.ClientConsultations)
                 .HasForeignKey(c => c.ClientId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Consultation>()
+                .HasOne(c => c.ClientProfile)
+                .WithMany()
+                .HasForeignKey(c => c.ClientProfileId)
                 .OnDelete(DeleteBehavior.Restrict);
                 
             builder.Entity<Consultation>()
