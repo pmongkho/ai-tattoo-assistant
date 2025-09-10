@@ -221,7 +221,7 @@ When all are collected, confirm the summary and say:
                     Id = Guid.NewGuid(),
                     ClientId = userId ?? string.Empty, // allow anonymous
                     ArtistId = resolvedArtistId, // <-- set it HERE
-                    Status = "started",
+                    Status = "draft",
                     SubmittedAt = DateTime.UtcNow,
                     ChatHistory = "[]" // 🚑 ensure we don't deserialize null
                 };
