@@ -85,6 +85,26 @@ public static class ProgramExtensions
     {
         // Configure database
         var connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        // Some hosting providers supply the connection string in URL format (e.g. postgres://).
+        // Npgsql expects standard key=value pairs, so convert if necessary.
+        if (!string.IsNullOrWhiteSpace(connectionString) && connectionString.Contains("://"))
+        {
+            try
+            {
+                var uri = new Uri(connectionString);
+                var userInfo = uri.UserInfo.Split(':', 2);
+                connectionString =
+                    $"Host={uri.Host};Port={uri.Port};Database={uri.LocalPath.TrimStart('/')};" +
+                    $"Username={userInfo[0]};Password={userInfo.ElementAtOrDefault(1)};" +
+                    "Pooling=true;SSL Mode=Require;Trust Server Certificate=true";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Invalid connection string format: {ex.Message}");
+            }
+        }
+
         services.AddDbContext<ApplicationDbContext>(options =>
         {
             if (string.IsNullOrWhiteSpace(connectionString))
