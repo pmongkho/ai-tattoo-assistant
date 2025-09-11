@@ -123,7 +123,6 @@ namespace dotnet_server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("ClientId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid?>("ConsultationId")
@@ -230,7 +229,6 @@ namespace dotnet_server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("ClientId")
-                        .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<Guid?>("ClientProfileId")
@@ -579,8 +577,7 @@ namespace dotnet_server.Migrations
                     b.HasOne("DotNet.Models.ApplicationUser", "Client")
                         .WithMany("ClientConsultations")
                         .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Artist");
 
