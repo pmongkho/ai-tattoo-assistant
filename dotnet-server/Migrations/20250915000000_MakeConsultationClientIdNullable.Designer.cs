@@ -17,7 +17,12 @@ namespace dotnet_server.Migrations
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
-            throw new NotSupportedException();
+            new MigrationSnapshot().BuildModel(modelBuilder);
+        }
+
+        private sealed class MigrationSnapshot : ApplicationDbContextModelSnapshot
+        {
+            public new void BuildModel(ModelBuilder modelBuilder) => base.BuildModel(modelBuilder);
         }
     }
 }
