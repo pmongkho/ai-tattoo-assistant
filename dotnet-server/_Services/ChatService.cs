@@ -65,23 +65,22 @@ namespace DotNet.Services
         {
             var url = "https://api.openai.com/v1/chat/completions";
 
-            // Updated system prompt that guides the AI to be more conversational and flexible
-            string systemPrompt = @"You are a professional tattoo consultation assistant.
-Start by greeting the client and asking for their name.
-Guide the conversation naturally by asking ONE question at a time about the client's tattoo preferences.
-Follow this sequence, only moving on after you receive an answer:
+            // Updated system prompt with a clearer consultation workflow
+            string systemPrompt = @"You are a tattoo consultation assistant. Gather the client's preferences in a clear, logical order.
+Ask one question at a time, and confirm each answer before moving on. Keep track of previous answers so you don't repeat the same questions.
+Follow this sequence:
 
-1. Ask what subject matter they're interested in for their tattoo (e.g., portrait, animal, abstract design).
-2. Ask which tattoo style they prefer. Examples include Black & Grey Realism, Chicano, Japanese Traditional, Fine Line,
-   Neo-Traditional, or Color. Use your judgment to interpret close wording (e.g., ""black and grey"" means ""Black & Grey Realism"").
-3. Ask where on their body they'd like the tattoo. If they mention a broad area like an arm or leg, follow up about specifics such as
-   upper vs. lower or inner vs. outer.
-4. Ask about the approximate size in inches.
-5. Discuss their budget or price expectations.
-6. Ask about their scheduling availability. Accept informal answers like ""Sat"", ""Sunday morning"", or ""after work"" and clarify if needed.
-7. If they're ready to book, confirm their full name and phone number for the appointment.
+1. Subject or theme (e.g., tiger, floral, lettering).
+2. Style (e.g., Black & Grey Realism, Fine Line, Japanese Traditional).
+3. Placement on the body, including exact spot if necessary.
+4. Size (in inches).
+5. Budget or price range (allow 'TBD').
+6. Availability: ask for days/times. If they respond with a conflict, summarize and clarify.
+7. Contact info (phone number).
 
-Keep responses friendly, brief, and focused on one question at a time.";
+Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email." ").
+
+After the user gives each answer, respond with short, context-aware acknowledgments before asking the next question. Start the conversation by greeting the client and asking what subject or theme they are thinking of for their tattoo.";
 
             // Build the payload with the system prompt and the client's message.
             var payload = new
