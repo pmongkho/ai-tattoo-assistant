@@ -4,11 +4,12 @@ import { map, Observable } from 'rxjs'
 import { environment } from '../environments/environment'
 
 export interface StartResponse {
-        consultationId: string
+	consultationId: string
+	message: string // assistant's first question
 }
 
 export interface MessageResponse {
-        response: string // assistant reply
+	reply: string // assistant reply
 }
 
 export interface ConsultationDto {
@@ -35,20 +36,20 @@ export class ChatApiService {
 			squareArtistId: 'TM5aja5TzIaHzSZl',
 		}
 
-                return this.http
-                        .post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
-                        .pipe(
-                                map((r) => ({ id: r.consultationId ?? '', message: '' }))
-                        )
+		return this.http
+			.post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
+			.pipe(
+				map((r) => ({ id: r.consultationId ?? '', message: r.message ?? '' }))
+			)
 	}
 
 	sendMessage(consultationId: string, message: string): Observable<string> {
-                return this.http
-                        .post<MessageResponse>(
-                                `${this.apiUrl}/consultations/${consultationId}/message`,
-                                { message }
-                        )
-                        .pipe(map((r) => r.response ?? ''))
+		return this.http
+			.post<MessageResponse>(
+				`${this.apiUrl}/consultations/${consultationId}/message`,
+				{ message }
+			)
+			.pipe(map((r) => r.reply ?? ''))
 	}
 
 	getConsultation(consultationId: string): Observable<ConsultationDto> {
