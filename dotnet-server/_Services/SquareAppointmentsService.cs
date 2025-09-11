@@ -25,7 +25,10 @@ namespace DotNet.Services
                 ? SquareEnvironment.Production
                 : SquareEnvironment.Sandbox;
 
-            _client = new SquareClient(_opts.AccessToken);
+            _client = new SquareClient.Builder()
+                .Environment(env)
+                .AccessToken(_opts.AccessToken)
+                .Build();
 
 
 
