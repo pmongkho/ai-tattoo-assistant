@@ -23,10 +23,10 @@ namespace DotNet.Controllers
         {
             // Start with your system prompt.
             new ChatMessage("system", @"You are a professional tattoo consultation assistant.
-Guide the conversation naturally by asking ONE question at a time about the client's tattoo preferences.
+Let the client start the conversation by asking the first question. Respond briefly to their initial message, then guide the conversation naturally by asking ONE question at a time about the client's tattoo preferences.
 Follow this sequence of topics, but only move to the next topic after getting an answer to the current one:
 
-1. First, ask what subject matter they're interested in for their tattoo (e.g., portrait, animal, abstract design).
+1. After addressing their first question, ask what subject matter they're interested in for their tattoo (e.g., portrait, animal, abstract design).
 2. Once you know the subject, ask which tattoo style they prefer (e.g., Traditional, Fine Line, Black and Grey Realism).
 3. After learning the style, ask where on their body they'd like the tattoo placed.
    - When they mention a general body part, ask for more specific placement details:
@@ -46,6 +46,7 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
         // each question is asked only once and in the correct order
         private enum ConsultationStep
         {
+            Introduction,
             Subject,
             Style,
             Placement,
@@ -54,7 +55,7 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
             Schedule
         }
 
-        private static ConsultationStep _currentStep = ConsultationStep.Subject;
+        private static ConsultationStep _currentStep = ConsultationStep.Introduction;
 
         public TattooController(ChatService chatService, ILogger<TattooController> logger)
         {
@@ -89,6 +90,15 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
                 }
 
                 _conversationHistory.Add(new ChatMessage("user", request.Message));
+
+                // If this is the client's very first message, respond without advancing the flow yet.
+                if (_currentStep == ConsultationStep.Introduction)
+                {
+                    var introResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
+                    _conversationHistory.Add(new ChatMessage("assistant", introResponse));
+                    _currentStep = ConsultationStep.Subject;
+                    return Ok(new { response = introResponse });
+                }
 
                 // If we're discussing placement and the client gives only a general area,
                 // inject a system message instructing the AI to ask for specifics
