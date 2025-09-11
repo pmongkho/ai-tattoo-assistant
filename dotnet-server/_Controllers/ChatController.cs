@@ -1,9 +1,12 @@
+using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
 
 namespace DotNet.Controllers
 {
@@ -12,6 +15,7 @@ namespace DotNet.Controllers
     public class TattooController : ControllerBase
     {
         private readonly ChatService _chatService;
+        private readonly ILogger<TattooController> _logger;
 
         // Chat prompt
         private static List<ChatMessage> _conversationHistory = new List<ChatMessage>
@@ -38,42 +42,54 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
         };
 
 
-        public TattooController(ChatService chatService)
+        public TattooController(ChatService chatService, ILogger<TattooController> logger)
         {
             _chatService = chatService;
+            _logger = logger;
         }
 
         // dotnet-server/_Controllers/ChatController.cs (TattooController)
         [HttpPost("consult")]
-        public async Task<IActionResult> Consult([FromBody] ChatRequest request)
+        public async Task<IActionResult> Consult([FromBody] ChatRequest? request)
         {
-            // Add logging
-            Console.WriteLine($"Received request: {JsonSerializer.Serialize(request)}");
+            _logger.LogInformation("Received request: {Request}", JsonSerializer.Serialize(request));
+
+            if (request == null)
+            {
+                _logger.LogWarning("Request body was null");
+                return BadRequest(new { error = "Request body is required." });
+            }
 
             if (string.IsNullOrWhiteSpace(request.Message))
             {
-                Console.WriteLine("Message is null or empty");
-                return BadRequest("Message cannot be empty.");
+                _logger.LogWarning("Message is null or empty");
+                return BadRequest(new { error = "Message cannot be empty." });
             }
 
             try
             {
-                // Add the user's new message to the conversation history.
                 _conversationHistory.Add(new ChatMessage("user", request.Message));
 
-                // Get the AI's response using the full conversation history.
                 var aiResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
 
-                // Append the AI's response to the conversation history.
                 _conversationHistory.Add(new ChatMessage("assistant", aiResponse));
 
                 return Ok(new { response = aiResponse });
             }
+            catch (HttpRequestException httpEx)
+            {
+                _logger.LogError(httpEx, "Error communicating with OpenAI");
+                return StatusCode(503, new { error = "Error communicating with AI service.", details = httpEx.Message });
+            }
+            catch (InvalidOperationException invEx)
+            {
+                _logger.LogError(invEx, "Configuration error");
+                return StatusCode(500, new { error = invEx.Message });
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error in consult: {ex.Message}");
-                Console.WriteLine($"Stack trace: {ex.StackTrace}");
-                return StatusCode(500, new { error = ex.Message });
+                _logger.LogError(ex, "Unhandled error in consult");
+                return StatusCode(500, new { error = "An unexpected error occurred." });
             }
         }
         
@@ -92,9 +108,14 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
                 var response = await _chatService.GetChatResponseAsync(testConversation);
                 return Ok(new { Response = response, Success = true });
             }
+            catch (HttpRequestException httpEx)
+            {
+                _logger.LogError(httpEx, "OpenAI test failed due to HTTP error");
+                return StatusCode(503, new { Error = "OpenAI test failed", Details = httpEx.Message });
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"OpenAI test failed: {ex.Message}");
+                _logger.LogError(ex, "OpenAI test failed");
                 return StatusCode(500, new { Error = "OpenAI test failed", Details = ex.Message });
             }
         }
