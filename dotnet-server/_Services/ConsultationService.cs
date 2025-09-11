@@ -227,7 +227,7 @@ When all are collected, confirm the summary and say:
                 var c = new Consultation
                 {
                     Id = Guid.NewGuid(),
-                    ClientId = userId ?? string.Empty, // allow anonymous
+                    ClientId = string.IsNullOrEmpty(userId) ? null : userId, // allow anonymous
                     ArtistId = resolvedArtistId, // <-- set it HERE
                     Status = "draft",
                     SubmittedAt = DateTime.UtcNow,
