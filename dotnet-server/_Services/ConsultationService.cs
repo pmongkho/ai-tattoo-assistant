@@ -58,7 +58,7 @@ When all are collected, confirm the summary and say:
         {
             bool hasSubject = !string.IsNullOrWhiteSpace(c.ImageUrl) || ChatHasSubject(c.ChatHistory);
             if (!hasSubject)
-                return "What subject or theme do you want for the tattoo (e.g., lion, floral, lettering, abstract)?";
+                return "Thanks for reaching out! I'm your tattoo consultation assistant. What subject or theme do you want for the tattoo (e.g., lion, floral, lettering, abstract)?";
 
             if (string.IsNullOrWhiteSpace(c.Style))
                 return
@@ -313,6 +313,7 @@ When all are collected, confirm the summary and say:
                     : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
                 // Log user message
                 chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 // Parse and persist data from this turn
                 UpdateConsultationFromChat(consultation, chatHistory);
@@ -354,6 +355,7 @@ When all are collected, confirm the summary and say:
                     ? new List<ChatMessage>()
                     : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
                 chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
@@ -422,6 +424,7 @@ When all are collected, confirm the summary and say:
                     chatHistory.Add(new ChatMessage("user", message ?? "Here's a reference image", imageUrl));
                 else
                     chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
 
@@ -470,6 +473,7 @@ When all are collected, confirm the summary and say:
                     chatHistory.Add(new ChatMessage("user", message ?? "Here's a reference image", imageUrl));
                 else
                     chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
+                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
