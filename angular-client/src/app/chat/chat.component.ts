@@ -36,10 +36,10 @@ export class ChatComponent implements OnInit {
 			)
 			this.consultationId = id || null
 			this.messages = []
-			this.pushAssistant(
-				message ||
-					'Hi! What subject or theme are you thinking of for your tattoo?'
-			)
+                        this.pushAssistant(
+                                message ||
+                                        "Thanks for reaching out! I'm your tattoo consultation assistant. What subject or theme are you thinking of for your tattoo?"
+                        )
 		} catch {
 			this.pushAssistant(
 				'Sorry—could not start the chat. Please refresh and try again.'
