@@ -1,4 +1,4 @@
-// dotnet-server/_Models/ChatModel.cs
+// dotnet-server/_Models/ChatMessage.cs
 using System.Text.Json.Serialization;
 
 namespace DotNet.Models
@@ -19,7 +19,9 @@ namespace DotNet.Models
         {
         }
 
+
         [JsonConstructor]
+
         public ChatMessage(string role, string content, string? imageUrl = null)
         {
             Role = role;
