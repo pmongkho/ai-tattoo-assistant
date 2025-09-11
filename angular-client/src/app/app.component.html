@@ -48,31 +48,15 @@
 				</svg>
 			</button> -->
 
-			<nav class="flex items-center space-x-4">
-				<a
-					routerLink="/chat"
-					class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-					>Chat</a
-				>
-				<span class="text-gray-300 dark:text-gray-600">|</span>
-				<ng-container *ngIf="authService.user$ | async; else loginLink">
-					<a
-						(click)="logout()"
-						class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
-						>Logout</a
-					>
-				</ng-container>
-				<ng-template #loginLink>
-					<a
-						routerLink="/login"
-						class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
-						>Login</a
-					>
-				</ng-template>
-
-			</nav>
+                        <nav class="flex items-center space-x-4">
+                                <a
+                                        routerLink="/chat"
+                                        class="text-gray-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                        >Chat</a
+                                >
+                        </nav>
 </div>
-	</header>
+        </header>
 
 	<main class="flex-grow container mx-auto px-4 py-6 max-w-4xl">
 		<router-outlet></router-outlet>
