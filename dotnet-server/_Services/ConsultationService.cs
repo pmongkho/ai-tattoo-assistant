@@ -296,9 +296,16 @@ When all are collected, confirm the summary and say:
         {
             try
             {
-                var consultation = await _context.Consultations
-                                       .FirstOrDefaultAsync(c =>
-                                           c.Id == consultationId && (c.ClientId == userId || c.ArtistId == userId))
+                // For anonymous users we can't match on userId (it will be empty).
+                // In that case just load by consultationId. Otherwise ensure the
+                // requesting user is either the client or artist on the record.
+                var query = _context.Consultations.Where(c => c.Id == consultationId);
+                if (!string.IsNullOrWhiteSpace(userId))
+                {
+                    query = query.Where(c => c.ClientId == userId || c.ArtistId == userId);
+                }
+
+                var consultation = await query.FirstOrDefaultAsync()
                                    ?? throw new KeyNotFoundException("Consultation not found");
 
                 var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
@@ -377,9 +384,15 @@ When all are collected, confirm the summary and say:
         {
             try
             {
-                var consultation = await _context.Consultations
-                                       .FirstOrDefaultAsync(c =>
-                                           c.Id == consultationId && (c.ClientId == userId || c.ArtistId == userId))
+                // Allow anonymous users to continue their session by ignoring the
+                // user check when no userId is supplied.
+                var query = _context.Consultations.Where(c => c.Id == consultationId);
+                if (!string.IsNullOrWhiteSpace(userId))
+                {
+                    query = query.Where(c => c.ClientId == userId || c.ArtistId == userId);
+                }
+
+                var consultation = await query.FirstOrDefaultAsync()
                                    ?? throw new KeyNotFoundException("Consultation not found");
 
                 string imageUrl = null;
