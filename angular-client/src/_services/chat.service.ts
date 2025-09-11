@@ -27,9 +27,9 @@ export interface ConsultationDto {
 
 @Injectable({ providedIn: 'root' })
 export class ChatApiService {
-	private apiUrl = environment.apiUrl
+        private apiUrl = environment.apiUrl
 
-	constructor(private http: HttpClient) {}
+        constructor(private http: HttpClient) {}
 
 	startConsultation(artistId: string) {
 		const body = {
@@ -57,9 +57,19 @@ export class ChatApiService {
                         .pipe(map((r) => r.response ?? ''))
 	}
 
-	getConsultation(consultationId: string): Observable<ConsultationDto> {
+        getConsultation(consultationId: string): Observable<ConsultationDto> {
                 return this.http.get<ConsultationDto>(
                         `${this.apiUrl}/consultations/${consultationId}`
                 )
+        }
+
+        // New helper for the TattooController-based chat endpoint
+        sendTattooMessage(userId: string, message: string): Observable<string> {
+                return this.http
+                        .post<MessageResponse>(`${this.apiUrl}/tattoo/consult`, {
+                                userId,
+                                message,
+                        })
+                        .pipe(map((r) => r.response ?? ''))
         }
 }
