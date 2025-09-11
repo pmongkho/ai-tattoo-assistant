@@ -17,84 +17,25 @@ namespace DotNet.Services
         private readonly ILogger<ConsultationService> _logger;
         private readonly ISquareAppointmentsService _squareAppointmentsService;
         private readonly UserManager<ApplicationUser> _userManager; // <-- add this
+        private readonly ChatService _chatService;
 
-        private static readonly string _systemPrompt = @"
-You are a professional tattoo consultation assistant.
-Be friendly and brief. Ask EXACTLY ONE question at a time.
-Do NOT invite the client to come in. Say we will follow up via Square notifications.
-
-Collect these in order and only move forward when the current item is answered:
-1) Subject/theme of the tattoo (if the client already gave it or uploaded a reference image, acknowledge and move on).
-2) Preferred style (if already given, acknowledge and move on). Examples: Black & Grey Realism, Color Realism, Chicano, Japanese Traditional, Fine Line, Neo-Traditional, Traditional, Watercolor, Tribal, Geometric, Dotwork.
-3) Body placement (ask for specifics if needed and note common areas like arm, leg, back, chest, hand, foot, neck, face, ribs, shoulder).
-4) Reference images (ask if they have any pictures of the design or the placement area to upload; proceed if none).
-5) Approximate size in inches.
-6) Budget / price expectations.
-7) Availability (days/times that work).
-8) FULL NAME (first + last) as it should appear on the appointment.
-9) PHONE NUMBER (accept any format; we will normalize).
-
-When all are collected, confirm the summary and say:
-“Thanks! I’ll submit this to our booking system. You’ll get Square notifications by text/email. No need to come in unless an appointment is confirmed.”
-";
 
         public ConsultationService(
             ApplicationDbContext context,
             IStorageService storageService,
             ILogger<ConsultationService> logger,
             UserManager<ApplicationUser> userManager, // <-- add this
-
+            ChatService chatService,
             ISquareAppointmentsService squareAppointmentsService)
         {
             _context = context;
             _storageService = storageService;
             _logger = logger;
             _userManager = userManager; // <-- set it
+            _chatService = chatService;
             _squareAppointmentsService = squareAppointmentsService;
         }
 
-        // ===== Helpers to decide next question (deterministic) =====
-
-        private static string BuildNextQuestion(Consultation c)
-        {
-            bool hasSubject = !string.IsNullOrWhiteSpace(c.ImageUrl) || ChatHasSubject(c.ChatHistory);
-            if (!hasSubject)
-                return "Thanks for reaching out! I'm your tattoo consultation assistant. What subject or theme do you want for the tattoo (e.g., lion, floral, lettering, abstract)?";
-
-            if (string.IsNullOrWhiteSpace(c.Style))
-                return
-                    "Which style do you prefer (e.g., Black & Grey Realism, Color Realism, Chicano, Japanese Traditional, Fine Line, Neo-Traditional, Traditional, Watercolor, Tribal, Geometric, Dotwork)?";
-
-            if (string.IsNullOrWhiteSpace(c.BodyPart))
-                return "Where on your body should the tattoo go? If it’s a general area, what exact spot?";
-
-            if (string.IsNullOrWhiteSpace(c.ImageUrl) && !UserDeclinedImage(c))
-                return "Do you have any reference images of the design or placement area you can upload? You can also say 'no'.";
-
-            if (string.IsNullOrWhiteSpace(c.Size))
-                return "About how large should it be? Please give a size in inches (e.g., 6x8 inches).";
-
-            if (string.IsNullOrWhiteSpace(c.PriceExpectation))
-                return "Do you have a budget or price range in mind? If you’re not sure, just say “TBD”.";
-
-            if (!LooksLikeAvailability(c.Availability))
-                return "What day(s) and time window(s) work? For example: “Sat or Sun morning” or “Fri after 6pm.”";
-
-            var name = string.IsNullOrWhiteSpace(c.ContactFullName)
-                ? ExtractContactFromChat(c.ChatHistory).fullName
-                : c.ContactFullName;
-            if (!LooksLikeFullName(name))
-                return "What’s your full name (first and last) exactly as you’d like it on the appointment?";
-
-            var phone = string.IsNullOrWhiteSpace(c.ContactPhone)
-                ? ExtractContactFromChat(c.ChatHistory).phone
-                : c.ContactPhone;
-            if (!LooksLikePhone(phone))
-                return "What’s the best phone number for Square updates and reminders? (Any format is fine.)";
-
-            return
-                "Thanks! I’ll submit this to our booking system now. You’ll get Square notifications by text/email. No need to come in — everything is handled online unless an appointment is confirmed.";
-        }
 
 
 
@@ -253,11 +194,6 @@ When all are collected, confirm the summary and say:
                     ChatHistory = "[]" // 🚑 ensure we don't deserialize null
                 };
 
-                var chatHistory = new List<ChatMessage>();
-                var firstQ = BuildNextQuestion(c);
-                chatHistory.Add(new ChatMessage("assistant", firstQ));
-                c.ChatHistory = JsonSerializer.Serialize(chatHistory);
-
                 _context.Consultations.Add(c);
                 await _context.SaveChangesAsync();
                 return c.Id;
@@ -293,11 +229,6 @@ When all are collected, confirm the summary and say:
                     SubmittedAt = DateTime.UtcNow,
                     ChatHistory = "[]"
                 };
-
-                var chatHistory = new List<ChatMessage>();
-                var firstQ = BuildNextQuestion(c);
-                chatHistory.Add(new ChatMessage("assistant", firstQ));
-                c.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 _context.Consultations.Add(c);
                 await _context.SaveChangesAsync();
@@ -338,9 +269,8 @@ When all are collected, confirm the summary and say:
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
 
-                // Decide next question (deterministic; no LLM here)
-                var nextQ = BuildNextQuestion(consultation);
-                var aiResponse = nextQ;
+                // Use the chat service for a friendly, context-aware reply
+                var aiResponse = await _chatService.GetChatResponseAsync(chatHistory);
 
                 // Record assistant message
                 chatHistory.Add(new ChatMessage("assistant", aiResponse));
@@ -379,8 +309,7 @@ When all are collected, confirm the summary and say:
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
 
-                var nextQ = BuildNextQuestion(consultation);
-                var aiResponse = nextQ;
+                var aiResponse = await _chatService.GetChatResponseAsync(chatHistory);
 
                 chatHistory.Add(new ChatMessage("assistant", aiResponse));
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
@@ -447,8 +376,7 @@ When all are collected, confirm the summary and say:
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
 
-                var nextQ = BuildNextQuestion(consultation);
-                var aiResponse = nextQ;
+                var aiResponse = await _chatService.GetChatResponseWithImageAsync(chatHistory);
 
                 chatHistory.Add(new ChatMessage("assistant", aiResponse));
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
@@ -497,8 +425,7 @@ When all are collected, confirm the summary and say:
                 UpdateConsultationFromChat(consultation, chatHistory);
                 PersistContactFromChat(consultation);
 
-                var nextQ = BuildNextQuestion(consultation);
-                var aiResponse = nextQ;
+                var aiResponse = await _chatService.GetChatResponseWithImageAsync(chatHistory);
 
                 chatHistory.Add(new ChatMessage("assistant", aiResponse));
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);

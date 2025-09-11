@@ -5,8 +5,6 @@ import { environment } from '../environments/environment'
 
 export interface StartResponse {
         consultationId: string
-        response: string // initial assistant reply
-
 }
 
 export interface MessageResponse {
@@ -39,12 +37,7 @@ export class ChatApiService {
 
                 return this.http
                         .post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
-                        .pipe(
-                                map((r) => ({
-                                        id: r.consultationId ?? '',
-                                        message: r.response ?? '',
-                                }))
-                        )
+                        .pipe(map((r) => ({ id: r.consultationId ?? '' })))
         }
 
 
