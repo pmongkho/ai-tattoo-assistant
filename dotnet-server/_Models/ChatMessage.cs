@@ -7,20 +7,20 @@ namespace DotNet.Models
     {
         [JsonPropertyName("role")]
         public string Role { get; set; }
-        
+
         [JsonPropertyName("content")]
         public string Content { get; set; }
-        
+
         [JsonPropertyName("image_url")]
         public string? ImageUrl { get; set; }
 
-        public ChatMessage(string role, string content)
+        // Parameterless constructor required for System.Text.Json deserialization
+        public ChatMessage()
         {
-            Role = role;
-            Content = content;
         }
-        
-        public ChatMessage(string role, string content, string imageUrl)
+
+        [JsonConstructor]
+        public ChatMessage(string role, string content, string? imageUrl = null)
         {
             Role = role;
             Content = content;
