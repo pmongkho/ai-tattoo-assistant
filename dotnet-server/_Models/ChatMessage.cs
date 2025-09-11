@@ -12,6 +12,7 @@ namespace DotNet.Models
         public string Content { get; set; }
 
         [JsonPropertyName("image_url")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? ImageUrl { get; set; }
 
         // Parameterless constructor required for System.Text.Json deserialization

@@ -110,7 +110,13 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
                 .GetProperty("content")
                 .GetString();
 
-            return chatResponse ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(chatResponse))
+            {
+                _logger.LogWarning("Empty response from OpenAI. Raw content: {Response}", responseContent);
+                chatResponse = "I'm sorry, I didn't catch that. Could you please rephrase?";
+            }
+
+            return chatResponse;
         }
 
 
@@ -177,7 +183,13 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
                 .GetProperty("content")
                 .GetString();
 
-            return chatResponse ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(chatResponse))
+            {
+                _logger.LogWarning("Empty response from OpenAI. Raw content: {Response}", responseContent);
+                chatResponse = "I'm sorry, I didn't catch that. Could you please rephrase?";
+            }
+
+            return chatResponse;
         }
     }
 }
