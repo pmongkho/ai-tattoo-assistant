@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -16,12 +17,8 @@ namespace DotNet.Controllers
         private readonly ChatService _chatService;
         private readonly ILogger<TattooController> _logger;
 
-        // Conversation history seeded with the system prompt so the model
-        // can manage the flow in a more natural, human way.
-        private static readonly List<ChatMessage> _conversationHistory = new()
-        {
-            new ChatMessage("system", ChatService.DefaultSystemPrompt)
-        };
+        // Track conversation history per user
+        private static readonly ConcurrentDictionary<string, List<ChatMessage>> _conversationHistories = new();
 
         public TattooController(ChatService chatService, ILogger<TattooController> logger)
         {
@@ -34,19 +31,20 @@ namespace DotNet.Controllers
         {
             _logger.LogInformation("Received request: {Request}", JsonSerializer.Serialize(request));
 
-            if (request == null || string.IsNullOrWhiteSpace(request.Message))
+            if (request == null || string.IsNullOrWhiteSpace(request.Message) || string.IsNullOrWhiteSpace(request.UserId))
             {
                 _logger.LogWarning("Request body was null or empty");
-                return BadRequest(new { error = "Message cannot be empty." });
+                return BadRequest(new { error = "Message and UserId cannot be empty." });
             }
 
             try
             {
-                _conversationHistory.Add(new ChatMessage("user", request.Message));
+                var history = _conversationHistories.GetOrAdd(request.UserId, _ => new List<ChatMessage>());
+                history.Add(new ChatMessage("user", request.Message));
 
-                var aiResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
+                var aiResponse = await _chatService.GetChatResponseAsync(history);
 
-                _conversationHistory.Add(new ChatMessage("assistant", aiResponse));
+                history.Add(new ChatMessage("assistant", aiResponse));
 
                 return Ok(new { response = aiResponse });
             }
@@ -95,6 +93,7 @@ namespace DotNet.Controllers
 
         public class ChatRequest
         {
+            public string? UserId { get; set; }
             public string? Message { get; set; }
         }
     }
