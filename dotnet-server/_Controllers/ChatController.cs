@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -41,6 +42,19 @@ Follow this sequence of topics, but only move to the next topic after getting an
 Keep your responses friendly, brief, and focused on one question at a time. Don't overwhelm the client with multiple questions in a single message.")
         };
 
+        // Track which part of the consultation we're in so we can ensure
+        // each question is asked only once and in the correct order
+        private enum ConsultationStep
+        {
+            Subject,
+            Style,
+            Placement,
+            Size,
+            Price,
+            Schedule
+        }
+
+        private static ConsultationStep _currentStep = ConsultationStep.Subject;
 
         public TattooController(ChatService chatService, ILogger<TattooController> logger)
         {
@@ -68,7 +82,34 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
 
             try
             {
+                // Normalize style names so the AI can easily understand the user's choice
+                if (_currentStep == ConsultationStep.Style)
+                {
+                    request.Message = NormalizeStyle(request.Message);
+                }
+
                 _conversationHistory.Add(new ChatMessage("user", request.Message));
+
+                // If we're discussing placement and the client gives only a general area,
+                // inject a system message instructing the AI to ask for specifics
+                if (_currentStep == ConsultationStep.Placement && NeedsSpecificPlacement(request.Message))
+                {
+                    var clarification = BuildPlacementClarification(request.Message);
+                    _conversationHistory.Add(new ChatMessage("system", clarification));
+                }
+                else
+                {
+                    // Advance to the next step only when we have a detailed answer
+                    _currentStep = _currentStep switch
+                    {
+                        ConsultationStep.Subject   => ConsultationStep.Style,
+                        ConsultationStep.Style     => ConsultationStep.Placement,
+                        ConsultationStep.Placement => ConsultationStep.Size,
+                        ConsultationStep.Size      => ConsultationStep.Price,
+                        ConsultationStep.Price     => ConsultationStep.Schedule,
+                        _                          => _currentStep
+                    };
+                }
 
                 var aiResponse = await _chatService.GetChatResponseAsync(_conversationHistory);
 
@@ -91,6 +132,58 @@ Keep your responses friendly, brief, and focused on one question at a time. Don'
                 _logger.LogError(ex, "Unhandled error in consult");
                 return StatusCode(500, new { error = "An unexpected error occurred." });
             }
+        }
+
+        private static string NormalizeStyle(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return message;
+            }
+
+            var styleMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                {"black and grey", "Black & Grey Realism"},
+                {"black & grey", "Black & Grey Realism"},
+                {"black grey", "Black & Grey Realism"}
+            };
+
+            var match = styleMap.FirstOrDefault(kvp => message.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase));
+            return string.IsNullOrEmpty(match.Key) ? message : match.Value;
+        }
+
+        private static bool NeedsSpecificPlacement(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message)) return false;
+
+            var generalAreas = new[] {"arm", "leg", "torso", "hand", "foot", "neck", "face"};
+            return generalAreas.Any(area => message.Contains(area, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string BuildPlacementClarification(string message)
+        {
+            if (message.Contains("arm", StringComparison.OrdinalIgnoreCase))
+            {
+                return "The client mentioned the arm. Ask if they prefer inner/outer forearm, bicep, tricep, shoulder, or full sleeve.";
+            }
+            if (message.Contains("leg", StringComparison.OrdinalIgnoreCase))
+            {
+                return "The client mentioned the leg. Ask if they prefer thigh, calf, ankle, or shin.";
+            }
+            if (message.Contains("torso", StringComparison.OrdinalIgnoreCase))
+            {
+                return "The client mentioned the torso. Ask if they prefer chest, ribs, stomach, back, or shoulder blade.";
+            }
+            if (message.Contains("hand", StringComparison.OrdinalIgnoreCase) || message.Contains("foot", StringComparison.OrdinalIgnoreCase))
+            {
+                return "The client mentioned the hand or foot. Ask if they prefer top of hand/foot, wrist, fingers, or ankle.";
+            }
+            if (message.Contains("neck", StringComparison.OrdinalIgnoreCase) || message.Contains("face", StringComparison.OrdinalIgnoreCase))
+            {
+                return "The client mentioned the neck or face. Ask for the exact placement such as side of neck or behind the ear.";
+            }
+
+            return "The client mentioned a general area. Ask for more specific placement details.";
         }
         
         // Add this to your TattooController
