@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using DotNet.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace DotNet.Services
 {
@@ -78,7 +79,7 @@ Follow this sequence:
 6. Availability: ask for days/times. If they respond with a conflict, summarize and clarify.
 7. Contact info (phone number).
 
-Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email." ").
+Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email."").
 
 After the user gives each answer, respond with short, context-aware acknowledgments before asking the next question. Start the conversation by greeting the client and asking what subject or theme they are thinking of for their tattoo.";
 

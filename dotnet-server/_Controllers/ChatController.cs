@@ -34,7 +34,7 @@ Follow this sequence:
 6. Availability: ask for days/times. If they respond with a conflict, summarize and clarify.
 7. Contact info (phone number).
 
-Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email." ").
+Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email."").
 
 Example conversation format:
 Assistant: ""Hi! What subject or theme are you thinking of for your tattoo?""
