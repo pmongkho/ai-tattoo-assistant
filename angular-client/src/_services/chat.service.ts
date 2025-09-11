@@ -48,14 +48,31 @@ export class ChatApiService {
         }
 
 
-	sendMessage(consultationId: string, message: string): Observable<string> {
+        sendMessage(consultationId: string, message: string): Observable<string> {
                 return this.http
                         .post<MessageResponse>(
                                 `${this.apiUrl}/consultations/${consultationId}/message`,
                                 { message }
                         )
                         .pipe(map((r) => r.response ?? ''))
-	}
+        }
+
+        sendMessageWithImage(
+                consultationId: string,
+                message: string,
+                image: File
+        ): Observable<string> {
+                const form = new FormData()
+                form.append('message', message)
+                form.append('image', image)
+
+                return this.http
+                        .post<MessageResponse>(
+                                `${this.apiUrl}/consultations/${consultationId}/message-with-image`,
+                                form
+                        )
+                        .pipe(map((r) => r.response ?? ''))
+        }
 
         getConsultation(consultationId: string): Observable<ConsultationDto> {
                 return this.http.get<ConsultationDto>(

@@ -24,14 +24,15 @@ Be friendly and brief. Ask EXACTLY ONE question at a time.
 Do NOT invite the client to come in. Say we will follow up via Square notifications.
 
 Collect these in order and only move forward when the current item is answered:
-1) Subject/theme of the tattoo (if the client already gave it, acknowledge and move on).
-2) Preferred style (if already given, acknowledge and move on).
-3) Body placement (ask for specifics if needed).
-4) Approximate size in inches.
-5) Budget / price expectations.
-6) Availability (days/times that work).
-7) FULL NAME (first + last) as it should appear on the appointment.
-8) PHONE NUMBER (accept any format; we will normalize).
+1) Subject/theme of the tattoo (if the client already gave it or uploaded a reference image, acknowledge and move on).
+2) Preferred style (if already given, acknowledge and move on). Examples: Black & Grey Realism, Color Realism, Chicano, Japanese Traditional, Fine Line, Neo-Traditional, Traditional, Watercolor, Tribal, Geometric, Dotwork.
+3) Body placement (ask for specifics if needed and note common areas like arm, leg, back, chest, hand, foot, neck, face, ribs, shoulder).
+4) Reference images (ask if they have any pictures of the design or the placement area to upload; proceed if none).
+5) Approximate size in inches.
+6) Budget / price expectations.
+7) Availability (days/times that work).
+8) FULL NAME (first + last) as it should appear on the appointment.
+9) PHONE NUMBER (accept any format; we will normalize).
 
 When all are collected, confirm the summary and say:
 “Thanks! I’ll submit this to our booking system. You’ll get Square notifications by text/email. No need to come in unless an appointment is confirmed.”
@@ -62,10 +63,13 @@ When all are collected, confirm the summary and say:
 
             if (string.IsNullOrWhiteSpace(c.Style))
                 return
-                    "Which style do you prefer (e.g., Black & Grey Realism, Chicano, Japanese Traditional, Fine Line, Neo-Traditional, Color)?";
+                    "Which style do you prefer (e.g., Black & Grey Realism, Color Realism, Chicano, Japanese Traditional, Fine Line, Neo-Traditional, Traditional, Watercolor, Tribal, Geometric, Dotwork)?";
 
             if (string.IsNullOrWhiteSpace(c.BodyPart))
                 return "Where on your body should the tattoo go? If it’s a general area, what exact spot?";
+
+            if (string.IsNullOrWhiteSpace(c.ImageUrl) && !UserDeclinedImage(c))
+                return "Do you have any reference images of the design or placement area you can upload? You can also say 'no'.";
 
             if (string.IsNullOrWhiteSpace(c.Size))
                 return "About how large should it be? Please give a size in inches (e.g., 6x8 inches).";
@@ -103,6 +107,21 @@ When all are collected, confirm the summary and say:
                 return msgs.Any(m => m.Role == "user" && Regex.IsMatch(m.Content ?? "",
                     @"(portrait|animal|flower|skull|script|lettering|abstract|lion|tiger|rose|name|quote|butterfly|dragon)",
                     RegexOptions.IgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool UserDeclinedImage(Consultation c)
+        {
+            if (string.IsNullOrWhiteSpace(c.ChatHistory)) return false;
+            try
+            {
+                var msgs = JsonSerializer.Deserialize<List<ChatMessage>>(c.ChatHistory) ?? new();
+                return msgs.Any(m => m.Role == "user" &&
+                    Regex.IsMatch(m.Content ?? "", @"\b(no|none|nope)\b", RegexOptions.IgnoreCase));
             }
             catch
             {
@@ -755,12 +774,15 @@ When all are collected, confirm the summary and say:
             {
                 var text = (message.Content ?? string.Empty).Trim();
 
-                // STYLE (include Chicano)
+                // STYLE detection
                 if (Regex.IsMatch(text, @"\bchicano\b", RegexOptions.IgnoreCase))
                     consultation.Style = "Chicano";
                 else if (Regex.IsMatch(text, @"black\s*(and|&)?\s*gr(e|a)y\s*realism", RegexOptions.IgnoreCase) ||
+                         Regex.IsMatch(text, @"\bcolor\s*realism\b", RegexOptions.IgnoreCase) ||
                          Regex.IsMatch(text, @"\b(realism)\b", RegexOptions.IgnoreCase))
-                    consultation.Style = "Black & Grey Realism";
+                    consultation.Style = text.Contains("color", StringComparison.OrdinalIgnoreCase)
+                        ? "Color Realism"
+                        : "Black & Grey Realism";
                 else if (Regex.IsMatch(text, @"\bfine\s*line\b", RegexOptions.IgnoreCase))
                     consultation.Style = "Fine Line";
                 else if (Regex.IsMatch(text, @"\bjapanese\b", RegexOptions.IgnoreCase))
@@ -769,6 +791,14 @@ When all are collected, confirm the summary and say:
                     consultation.Style = "Neo-Traditional";
                 else if (Regex.IsMatch(text, @"\btraditional\b", RegexOptions.IgnoreCase))
                     consultation.Style = "Traditional";
+                else if (Regex.IsMatch(text, @"\bwater\s*color\b", RegexOptions.IgnoreCase))
+                    consultation.Style = "Watercolor";
+                else if (Regex.IsMatch(text, @"\btribal\b", RegexOptions.IgnoreCase))
+                    consultation.Style = "Tribal";
+                else if (Regex.IsMatch(text, @"\bgeo(metric)?\b", RegexOptions.IgnoreCase))
+                    consultation.Style = "Geometric";
+                else if (Regex.IsMatch(text, @"\bdotwork\b", RegexOptions.IgnoreCase))
+                    consultation.Style = "Dotwork";
                 else if (Regex.IsMatch(text, @"\bcolor\b", RegexOptions.IgnoreCase))
                     consultation.Style = "Color";
 
@@ -785,6 +815,18 @@ When all are collected, confirm the summary and say:
                     consultation.BodyPart = "Leg";
                 else if (Regex.IsMatch(text, @"\b(back|shoulder blade)\b", RegexOptions.IgnoreCase))
                     consultation.BodyPart = "Back";
+                else if (Regex.IsMatch(text, @"\b(hand|palm)\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Hand";
+                else if (Regex.IsMatch(text, @"\b(foot|feet|ankle)\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Foot";
+                else if (Regex.IsMatch(text, @"\bneck\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Neck";
+                else if (Regex.IsMatch(text, @"\b(face|head)\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Face";
+                else if (Regex.IsMatch(text, @"\b(rib|ribs|side)\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Ribs";
+                else if (Regex.IsMatch(text, @"\bshoulder\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Shoulder";
                 else if (text.Contains("torso", StringComparison.OrdinalIgnoreCase))
                     consultation.BodyPart = "Torso";
 
