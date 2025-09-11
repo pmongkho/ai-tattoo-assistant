@@ -5,6 +5,8 @@ import { environment } from '../environments/environment'
 
 export interface StartResponse {
         consultationId: string
+        response: string // initial assistant reply
+
 }
 
 export interface MessageResponse {
@@ -38,9 +40,13 @@ export class ChatApiService {
                 return this.http
                         .post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
                         .pipe(
-                                map((r) => ({ id: r.consultationId ?? '', message: '' }))
+                                map((r) => ({
+                                        id: r.consultationId ?? '',
+                                        message: r.response ?? '',
+                                }))
                         )
-	}
+        }
+
 
 	sendMessage(consultationId: string, message: string): Observable<string> {
                 return this.http
@@ -52,8 +58,8 @@ export class ChatApiService {
 	}
 
 	getConsultation(consultationId: string): Observable<ConsultationDto> {
-		return this.http.get<ConsultationDto>(
-			`${this.apiUrl}consultations/${consultationId}`
-		)
-	}
+                return this.http.get<ConsultationDto>(
+                        `${this.apiUrl}/consultations/${consultationId}`
+                )
+        }
 }
