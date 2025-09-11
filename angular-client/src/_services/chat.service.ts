@@ -6,6 +6,7 @@ import { environment } from '../environments/environment'
 export interface StartResponse {
         consultationId: string
         response: string // initial assistant reply
+
 }
 
 export interface MessageResponse {
@@ -45,6 +46,7 @@ export class ChatApiService {
                                 }))
                         )
         }
+
 
 	sendMessage(consultationId: string, message: string): Observable<string> {
                 return this.http
