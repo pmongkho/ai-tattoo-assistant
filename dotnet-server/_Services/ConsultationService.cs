@@ -19,6 +19,7 @@ namespace DotNet.Services
         private readonly UserManager<ApplicationUser> _userManager; // <-- add this
         private readonly ChatService _chatService;
 
+
         public ConsultationService(
             ApplicationDbContext context,
             IStorageService storageService,
@@ -37,6 +38,7 @@ namespace DotNet.Services
 
 
 
+
         private static bool ChatHasSubject(string? chatJson)
         {
             if (string.IsNullOrWhiteSpace(chatJson)) return false;
@@ -46,6 +48,21 @@ namespace DotNet.Services
                 return msgs.Any(m => m.Role == "user" && Regex.IsMatch(m.Content ?? "",
                     @"(portrait|animal|flower|skull|script|lettering|abstract|lion|tiger|rose|name|quote|butterfly|dragon)",
                     RegexOptions.IgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool UserDeclinedImage(Consultation c)
+        {
+            if (string.IsNullOrWhiteSpace(c.ChatHistory)) return false;
+            try
+            {
+                var msgs = JsonSerializer.Deserialize<List<ChatMessage>>(c.ChatHistory) ?? new();
+                return msgs.Any(m => m.Role == "user" &&
+                    Regex.IsMatch(m.Content ?? "", @"\b(no|none|nope)\b", RegexOptions.IgnoreCase));
             }
             catch
             {
