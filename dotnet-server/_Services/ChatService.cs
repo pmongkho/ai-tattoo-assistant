@@ -17,8 +17,23 @@ namespace DotNet.Services
         private readonly string _apiKey;
         private readonly string _model;
         private readonly ILogger<ChatService> _logger;
+        private readonly double _temperature;
+        private readonly double _topP;
+        private static readonly Random _rand = new();
 
         public const string DefaultSystemPrompt = @"You are a friendly tattoo consultation assistant. Have a natural back-and-forth conversation to gather the client's tattoo preferences, including subject or theme, style, placement, size, budget, availability, and contact information. Ask one question at a time, acknowledge responses in a personable way, avoid repeating questions, and finish by summarizing the details and letting them know you'll send Square notifications. Start by greeting the client and asking what subject or theme they have in mind.";
+
+        private static readonly string[] _systemPromptVariations =
+        {
+            DefaultSystemPrompt,
+            @"You're a personable tattoo consultation assistant. Chat naturally to learn the client's desired subject, style, placement, size, budget, availability, and contact information. Ask a single question at a time, respond warmly, avoid repetition, and close by summarizing details and mentioning Square notifications.",
+            @"Act as a helpful tattoo design guide. Engage in casual back-and-forth to understand the client's theme, style, placement, size, budget, schedule, and contact info. Keep questions one-at-a-time, be friendly, and wrap up with a recap while noting you'll send Square notifications."
+        };
+
+        private static string GetRandomSystemPrompt()
+        {
+            return _systemPromptVariations[_rand.Next(_systemPromptVariations.Length)];
+        }
 
         // dotnet-server/_Services/ChatService.cs
         public ChatService(IConfiguration configuration, HttpClient httpClient, ILogger<ChatService> logger)
@@ -39,6 +54,13 @@ namespace DotNet.Services
             _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ??
                      configuration["OpenAI:AiModel"] ??
                      "gpt-3.5-turbo";
+
+            var tempString = Environment.GetEnvironmentVariable("OPENAI_TEMPERATURE") ??
+                             configuration["OpenAI:Temperature"];
+            _temperature = double.TryParse(tempString, out var temp) ? temp : 0.8;
+            var topPString = Environment.GetEnvironmentVariable("OPENAI_TOP_P") ??
+                             configuration["OpenAI:TopP"];
+            _topP = double.TryParse(topPString, out var topP) ? topP : 1.0;
 
             // Log configuration (but mask most of the API key)
             var maskedKey = _apiKey?.Length > 8
@@ -62,13 +84,15 @@ namespace DotNet.Services
 
             if (!conversationHistory.Any(m => m.Role == "system"))
             {
-                conversationHistory.Insert(0, new ChatMessage("system", DefaultSystemPrompt));
+                conversationHistory.Insert(0, new ChatMessage("system", GetRandomSystemPrompt()));
             }
 
             var payload = new
             {
                 model = _model,
-                messages = conversationHistory
+                messages = conversationHistory,
+                temperature = _temperature,
+                top_p = _topP
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
@@ -116,7 +140,7 @@ namespace DotNet.Services
 
             if (!conversationHistory.Any(m => m.Role == "system"))
             {
-                conversationHistory.Insert(0, new ChatMessage("system", DefaultSystemPrompt));
+                conversationHistory.Insert(0, new ChatMessage("system", GetRandomSystemPrompt()));
             }
 
             // Build the payload with the conversation history
@@ -151,7 +175,9 @@ namespace DotNet.Services
             var payload = new
             {
                 model = _model,
-                messages = messages
+                messages = messages,
+                temperature = _temperature,
+                top_p = _topP
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
