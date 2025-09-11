@@ -1,9 +1,8 @@
 import { Component, ChangeDetectorRef, OnInit } from '@angular/core'
 import { ThemeService } from '../_services/theme.service'
-import { AuthService } from '../_services/auth.service'
-import { Router, RouterModule } from '@angular/router'
+import { RouterModule } from '@angular/router'
 import { Observable } from 'rxjs'
-import {CommonModule} from '@angular/common'
+import { CommonModule } from '@angular/common'
 
 @Component({
 	selector: 'app-root',
@@ -16,14 +15,12 @@ export class AppComponent implements OnInit {
 	isDarkMode$: Observable<boolean>
 	htmlClass: string = ''
 
-	constructor(
-		public themeService: ThemeService,
-		public authService: AuthService,
-		private router: Router,
-		private cdr: ChangeDetectorRef
-	) {
-		this.isDarkMode$ = this.themeService.darkMode$
-	}
+        constructor(
+                public themeService: ThemeService,
+                private cdr: ChangeDetectorRef
+        ) {
+                this.isDarkMode$ = this.themeService.darkMode$
+        }
 
 	ngOnInit(): void {
 		// Check the current state of the HTML class
@@ -61,18 +58,9 @@ export class AppComponent implements OnInit {
 		)
 	}
 
-	/**
-	 * Log the user out and redirect to login page
-	 */
-	logout(): void {
-		console.log('Logout called')
-		this.authService.logout()
-		this.router.navigate(['/login'])
-	}
-
-	/**
-	 * Get the current HTML class for debugging
-	 */
+        /**
+         * Get the current HTML class for debugging
+         */
 	getHtmlClass(): string {
 		if (typeof document !== 'undefined') {
 			return document.documentElement.classList.contains('dark')
