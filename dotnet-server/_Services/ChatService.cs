@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -17,6 +18,7 @@ namespace DotNet.Services
         private readonly string _model;
         private readonly ILogger<ChatService> _logger;
 
+        public const string DefaultSystemPrompt = @"You are a friendly tattoo consultation assistant. Have a natural back-and-forth conversation to gather the client's tattoo preferences, including subject or theme, style, placement, size, budget, availability, and contact information. Ask one question at a time, acknowledge responses in a personable way, avoid repeating questions, and finish by summarizing the details and letting them know you'll send Square notifications. Start by greeting the client and asking what subject or theme they have in mind.";
 
         // dotnet-server/_Services/ChatService.cs
         public ChatService(IConfiguration configuration, HttpClient httpClient, ILogger<ChatService> logger)
@@ -48,42 +50,21 @@ namespace DotNet.Services
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
         }
 
-        // / <summary>
-        // / Gets a response from the AI acting as a tattoo consultation assistant.
-        // / The system prompt instructs the AI to ask for details in a specific sequence:
-        // / 1. Tattoo subject matter.
-        // / 2. Tattoo style preference (from a predefined list).
-        // / 3. Tattoo placement (from a predefined list).
-        // / 4. Desired size in inches.
-        // / 5. Price expectations/confirmation.
-        // / 6. Appointment booking if price is agreed.
-        // / Specific design details and reference photos are not requested at this time.
-        // / </summary>
-        // / <param name="userMessage">The client's initial message.</param>
-        // / <returns>The AI's response with follow-up questions.</returns>
-// dotnet-server/_Services/ChatService.cs
+        // dotnet-server/_Services/ChatService.cs
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
             var url = "https://api.openai.com/v1/chat/completions";
 
-            // Updated system prompt with a clearer consultation workflow
-            string systemPrompt = @"You are a tattoo consultation assistant. Gather the client's preferences in a clear, logical order.
-Ask one question at a time, and confirm each answer before moving on. Keep track of previous answers so you don't repeat the same questions.
-Follow this sequence:
+            if (conversationHistory == null)
+            {
+                conversationHistory = new List<ChatMessage>();
+            }
 
-1. Subject or theme (e.g., tiger, floral, lettering).
-2. Style (e.g., Black & Grey Realism, Fine Line, Japanese Traditional).
-3. Placement on the body, including exact spot if necessary.
-4. Size (in inches).
-5. Budget or price range (allow 'TBD').
-6. Availability: ask for days/times. If they respond with a conflict, summarize and clarify.
-7. Contact info (phone number).
+            if (!conversationHistory.Any(m => m.Role == "system"))
+            {
+                conversationHistory.Insert(0, new ChatMessage("system", DefaultSystemPrompt));
+            }
 
-Conclude with a clear summary of all collected info, then notify them about next steps (e.g., ""We'll submit to the booking system. You'll get updates by text/email."").
-
-After the user gives each answer, respond with short, context-aware acknowledgments before asking the next question. Start the conversation by greeting the client and asking what subject or theme they are thinking of for their tattoo.";
-
-            // Build the payload with the system prompt and the client's message.
             var payload = new
             {
                 model = _model,
@@ -127,6 +108,16 @@ After the user gives each answer, respond with short, context-aware acknowledgme
         public async Task<string> GetChatResponseWithImageAsync(List<ChatMessage> conversationHistory)
         {
             var url = "https://api.openai.com/v1/chat/completions";
+
+            if (conversationHistory == null)
+            {
+                conversationHistory = new List<ChatMessage>();
+            }
+
+            if (!conversationHistory.Any(m => m.Role == "system"))
+            {
+                conversationHistory.Insert(0, new ChatMessage("system", DefaultSystemPrompt));
+            }
 
             // Build the payload with the conversation history
             var messages = new List<object>();
