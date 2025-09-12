@@ -42,7 +42,7 @@ namespace DotNet.Controllers
                 var history = _conversationHistories.GetOrAdd(request.UserId, _ => new List<ChatMessage>());
                 history.Add(new ChatMessage("user", request.Message));
 
-                var aiResponse = await _chatService.GetChatResponseAsync(history);
+                var aiResponse = await _chatService.GetChatResponseAsync(request.UserId, history);
 
                 history.Add(new ChatMessage("assistant", aiResponse));
 
