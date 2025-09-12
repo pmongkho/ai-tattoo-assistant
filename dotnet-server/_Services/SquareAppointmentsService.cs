@@ -50,9 +50,22 @@ namespace DotNet.Services
             var customerId = await UpsertCustomerAsync(fullName, phoneE164,
                 note: BuildCustomerNote(style, bodyPart, size, budget, availabilityNote, referenceImageUrl));
 
+            if (!Regex.IsMatch(_opts.LocationId ?? string.Empty, @"^[A-Z0-9]{10}$"))
+            {
+                _logger.LogWarning(
+                    "Invalid or missing LocationId configured; returning customer id without booking.");
+                return (customerId, null);
+            }
+
             if (string.IsNullOrWhiteSpace(_opts.ServiceVariationId))
             {
                 _logger.LogInformation("No ServiceVariationId configured; returning customer id without booking.");
+                return (customerId, null);
+            }
+
+            if (string.IsNullOrWhiteSpace(_opts.TeamMemberId))
+            {
+                _logger.LogInformation("No TeamMemberId configured; returning customer id without booking.");
                 return (customerId, null);
             }
 
