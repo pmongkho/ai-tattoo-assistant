@@ -10,7 +10,10 @@ namespace DotNet.Models
         public string? Size { get; set; }
         public string? References { get; set; }
         public string? Budget { get; set; }
-        public string? Schedule { get; set; }
-        public string? Contact { get; set; }
+        // When the client is free or unavailable
+        public string? Availability { get; set; }
+        // Separate contact details so we can validate each piece
+        public string? Name { get; set; }
+        public string? Phone { get; set; }
     }
 }
