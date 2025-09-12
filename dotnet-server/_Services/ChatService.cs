@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Linq;
 using System.Net.Http;
 using System.Text;
@@ -20,6 +21,7 @@ namespace DotNet.Services
         private readonly double _temperature;
         private readonly double _topP;
         private static readonly Random _rand = new();
+        private static readonly ConcurrentDictionary<string, TattooConsultationData> _userData = new();
 
         public const string DefaultSystemPrompt = @"You are a personable, upbeat TATTOO CONSULTATION ASSISTANT for a professional studio.
 Behavior:
@@ -33,7 +35,7 @@ Core flow (advance only one step per reply, based on what they’ve said):
 3) Placement (be specific by limb area):
    • Arm → upper/bicep (outer deltoid, inner bicep, front bicep), lower/forearm (inner or outer), elbow ditch, wrist, hand/fingers.
    • Leg → thigh (front/outer/inner/back), knee/ditch, shin, calf (inner/outer/back), ankle, foot.
-   • Torso/Back/Neck/Head → ask for exact location + side.
+   • Torso/Back/Neck/Head → ask for exact location + side. If it's the chest, ask whether it's left, right, or center.
 4) Size: ask for inches or common terms (palm-size, hand-size, half-sleeve, etc.).
 5) References: ask if they have photos/inspo to upload.
 6) Budget: ask for a comfortable range.
@@ -51,16 +53,23 @@ Tone tips:
 Wrap-up:
 - Summarize subject, style, placement, size, budget range, and availability.
 - Mention that Square notifications will be sent for updates.
-- Propose a concrete next step (book in-person/photo consult) and aim to lock it in.
+- Propose a concrete next step:
+  • For small tattoos, offer to book the appointment directly.
+  • For half or full day sessions (8–10 hrs), suggest an online consultation.
+  • For sleeves or very large/detailed projects, recommend an in-person consultation.
+  Aim to lock in the plan.
 ";
 
         public const string DesignGuidePrompt = @"Act as an encouraging TATTOO DESIGN GUIDE.
 - Wait for the client’s opening message; reply with friendly enthusiasm and ONE focused question at a time.
 - Think like an artist: clarify subject, style (if realism → confirm black & grey vs color), exact placement (get limb sub-areas), size, references, budget, schedule, and name/phone.
 - When price comes up, start with: “To better assist you, we need a little more info about the tattoo you’re wanting,” then ask the next most useful question.
-- Avoid repetition; acknowledge what’s already provided; keep messages short and positive.
+ - Avoid repetition; acknowledge what’s already provided; keep messages short and positive.
 - Close by recapping details, noting you’ll send Square notifications, and proposing a consultation slot.
-";
+  • Book small tattoos directly.
+  • For half or full day sessions (8–10 hrs) move to an online consultation.
+  • For sleeves or extensive work, plan an in-person consultation.
+ ";
 
         private static readonly string[] _systemPromptVariations =
         {
@@ -111,6 +120,12 @@ Wrap-up:
         }
 
         // dotnet-server/_Services/ChatService.cs
+        public async Task<string> GetChatResponseAsync(string userId, List<ChatMessage> conversationHistory)
+        {
+            UpdateUserData(userId, conversationHistory);
+            return await GetChatResponseAsync(conversationHistory);
+        }
+
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
             var url = "https://api.openai.com/v1/chat/completions";
@@ -164,6 +179,52 @@ Wrap-up:
             }
 
             return chatResponse;
+        }
+
+        private void UpdateUserData(string userId, List<ChatMessage> history)
+        {
+            if (string.IsNullOrWhiteSpace(userId) || history == null)
+            {
+                return;
+            }
+
+            var data = _userData.GetOrAdd(userId, _ => new TattooConsultationData());
+            var userMessages = history.Where(m => m.Role == "user").ToList();
+            if (userMessages.Count == 0)
+            {
+                return;
+            }
+
+            var lastMessage = userMessages.Last();
+            switch (userMessages.Count)
+            {
+                case 1:
+                    data.Subject = lastMessage.Content;
+                    break;
+                case 2:
+                    data.Style = lastMessage.Content;
+                    break;
+                case 3:
+                    data.Placement = lastMessage.Content;
+                    break;
+                case 4:
+                    data.Size = lastMessage.Content;
+                    break;
+                case 5:
+                    data.References = lastMessage.Content;
+                    break;
+                case 6:
+                    data.Budget = lastMessage.Content;
+                    break;
+                case 7:
+                    data.Schedule = lastMessage.Content;
+                    break;
+                case 8:
+                    data.Contact = lastMessage.Content;
+                    break;
+            }
+
+            _logger.LogInformation("Collected data for {User}: {Data}", userId, JsonSerializer.Serialize(data));
         }
 
 
