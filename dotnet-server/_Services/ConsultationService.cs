@@ -88,10 +88,10 @@ namespace DotNet.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return false;
             var t = s.ToLowerInvariant();
-            // must contain a day signal AND a time window
+            // require a day or a time window indicator (either is enough)
             var hasDay = Regex.IsMatch(t, @"\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|weekday|weekend)\b");
-            var hasTime = Regex.IsMatch(t, @"\b(morning|afternoon|evening|after\s*\d|before\s*\d|am|pm)\b");
-            return hasDay && hasTime;
+            var hasTime = Regex.IsMatch(t, @"\b(morning|afternoon|evening|any\s*time|anytime|after\s*\d|before\s*\d|am|pm)\b");
+            return hasDay || hasTime;
         }
 
 
