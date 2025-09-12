@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DotNet.Models;
 using Microsoft.Extensions.Configuration;
@@ -22,6 +23,8 @@ namespace DotNet.Services
         private readonly double _topP;
         private static readonly Random _rand = new();
         private static readonly ConcurrentDictionary<string, TattooConsultationData> _userData = new();
+        private static readonly Regex NameRegex = new(@"\b([A-Za-z][A-Za-z'’\-]+)\s+([A-Za-z][A-Za-z'’\-]+)\b", RegexOptions.Compiled);
+        private static readonly Regex PhoneRegex = new(@"\+?\d[\d\s\-()]{7,}\d", RegexOptions.Compiled);
 
         public const string DefaultSystemPrompt = @"You are a personable, upbeat TATTOO CONSULTATION ASSISTANT for a professional studio.
 Behavior:
@@ -39,8 +42,8 @@ Core flow (advance only one step per reply, based on what they’ve said):
 4) Size: ask for inches or common terms (palm-size, hand-size, half-sleeve, etc.).
 5) References: ask if they have photos/inspo to upload.
 6) Budget: ask for a comfortable range.
-7) Schedule: ask what days/times work best or if they prefer a later date.
-8) Contact: ask for their name and best phone number.
+7) Availability: ask which dates or days work best and note any days/times they can't do.
+8) Contact: ask for their full name and best phone number (both required).
 
 If they ask “how much?” say first:
   “To better assist you, we need a little more info about the tattoo you’re wanting.”
@@ -62,7 +65,7 @@ Wrap-up:
 
         public const string DesignGuidePrompt = @"Act as an encouraging TATTOO DESIGN GUIDE.
 - Wait for the client’s opening message; reply with friendly enthusiasm and ONE focused question at a time.
-- Think like an artist: clarify subject, style (if realism → confirm black & grey vs color), exact placement (get limb sub-areas), size, references, budget, schedule, and name/phone.
+ - Think like an artist: clarify subject, style (if realism → confirm black & grey vs color), exact placement (get limb sub-areas), size, references, budget, availability (ask for dates/days that work or don't), and full name & phone.
 - When price comes up, start with: “To better assist you, we need a little more info about the tattoo you’re wanting,” then ask the next most useful question.
  - Avoid repetition; acknowledge what’s already provided; keep messages short and positive.
 - Close by recapping details, noting you’ll send Square notifications, and proposing a consultation slot.
@@ -217,10 +220,16 @@ Wrap-up:
                     data.Budget = lastMessage.Content;
                     break;
                 case 7:
-                    data.Schedule = lastMessage.Content;
+                    data.Availability = lastMessage.Content;
                     break;
                 case 8:
-                    data.Contact = lastMessage.Content;
+                    var content = lastMessage.Content ?? string.Empty;
+                    var nameMatch = NameRegex.Match(content);
+                    if (nameMatch.Success)
+                        data.Name = nameMatch.Value;
+                    var phoneMatch = PhoneRegex.Match(content);
+                    if (phoneMatch.Success)
+                        data.Phone = phoneMatch.Value;
                     break;
             }
 
