@@ -1,26 +1,9 @@
-tattoo artist need to have
--name
--company
--schedule
--style preferred
--hourly rate
--ig pic integration?
--phone 
-
-
-tattoo artist get request
-they send the ai-tattoo-assistant link
-customer answers ai questions
--subject option for picture upload
--style
--body placement option for picture upload
--size
--price expectations
--availability
--books appointments
-tattoo consultation needs to be approved
-user enters in details like 
-name
-phone number
-email
-appointment is booked
+Tattoo artist shares consultation link
+Customer answers AI questions
+- style
+- body placement
+- size
+- price expectations
+- availability
+AI collects contact information
+Artist reviews consultation and follows up manually

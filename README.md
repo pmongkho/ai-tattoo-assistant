@@ -1,13 +1,12 @@
 # AI Tattoo Assistant
 
-AI Tattoo Assistant is a full-stack web application that uses AI to streamline the tattoo consultation and appointment process. Built with ASP.NET Core, PostgreSQL, and Angular, the app connects clients with tattoo artists through a conversational AI interface.
+AI Tattoo Assistant is a full-stack web application that uses AI to streamline tattoo consultations. Built with ASP.NET Core, PostgreSQL, and Angular, the app connects clients with tattoo artists through a conversational AI interface.
 
 ## Features
 
-- 🤖 **AI Chat Interface** – Users chat with an OpenAI-powered assistant to describe their tattoo idea, get estimates, and upload reference images.
-- 🧾 **Price Negotiation** – The AI assists in setting a price before booking.
-- 📅 **Appointment Booking** – Once a price is agreed upon, users can book an appointment with available tattoo artists.
-- 🧠 **Smart Backend** – Built with .NET 8 and PostgreSQL to handle AI prompts, user sessions, and appointment data.
+- 🤖 **AI Chat Interface** – Users chat with an OpenAI-powered assistant to describe their tattoo idea and share preferences.
+- 🧾 **Price Estimation** – The AI helps suggest a price range before any manual follow-up.
+- 🧠 **Smart Backend** – Built with .NET 8 and PostgreSQL to handle AI prompts and consultation records.
 - 🌐 **Modern Frontend** – Angular client for a responsive, smooth user experience.
 - 🐳 **Dockerized** – Easily run the app locally using Docker and `docker-compose`.
 
