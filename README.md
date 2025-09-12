@@ -9,6 +9,7 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 - 🧠 **Smart Backend** – Built with .NET 8 and PostgreSQL to handle AI prompts and consultation records.
 - 🌐 **Modern Frontend** – Angular client for a responsive, smooth user experience.
 - 🐳 **Dockerized** – Easily run the app locally using Docker and `docker-compose`.
+- 🏢 **Multi-Tenant Ready** – Backend scaffold includes per-artist isolation and token management.
 
 ## Tech Stack
 

@@ -1,8 +1,8 @@
 using System.Text;
 using System.Text.Json;
 using DotNet.Models;
+using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 
 namespace DotNet.Controllers
 {
@@ -11,13 +11,13 @@ namespace DotNet.Controllers
     public class MetaWebhookController : ControllerBase
     {
         private readonly TattooController _chatController;
+        private readonly ITenantService _tenantService;
         private readonly string _verifyToken = "YOUR_VERIFY_TOKEN";
-        private readonly string _pageAccessToken;
 
-        public MetaWebhookController(TattooController chatController, IConfiguration configuration)
+        public MetaWebhookController(TattooController chatController, ITenantService tenantService)
         {
             _chatController = chatController;
-            _pageAccessToken = configuration["Meta:PageAccessToken"] ?? string.Empty;
+            _tenantService = tenantService;
         }
 
         [HttpGet]
@@ -34,7 +34,11 @@ namespace DotNet.Controllers
                 return Ok();
             }
 
-            var msg = metaEvent.Entry[0].Messaging[0];
+            var entry = metaEvent.Entry[0];
+            var msg = entry.Messaging[0];
+
+            var tenant = await _tenantService.FindByMetaIdAsync(entry.Id);
+            var accessToken = _tenantService.DecryptToken(tenant?.EncryptedPageAccessToken);
 
             var response = await _chatController.Consult(new TattooController.ChatRequest
             {
@@ -46,15 +50,15 @@ namespace DotNet.Controllers
                 ? ((JsonElement)response.Value!).GetProperty("response").GetString() ?? string.Empty
                 : string.Empty;
 
-            if (!string.IsNullOrEmpty(replyText))
+            if (!string.IsNullOrEmpty(replyText) && accessToken != null)
             {
-                await SendMetaReplyAsync(msg.Sender.Id, replyText);
+                await SendMetaReplyAsync(msg.Sender.Id, replyText, accessToken);
             }
 
             return Ok();
         }
 
-        private async Task SendMetaReplyAsync(string recipientId, string text)
+        private async Task SendMetaReplyAsync(string recipientId, string text, string pageAccessToken)
         {
             var payload = new
             {
@@ -63,7 +67,7 @@ namespace DotNet.Controllers
             };
 
             using var http = new HttpClient();
-            var uri = $"https://graph.facebook.com/v18.0/me/messages?access_token={_pageAccessToken}";
+            var uri = $"https://graph.facebook.com/v18.0/me/messages?access_token={pageAccessToken}";
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             await http.PostAsync(uri, content);
         }
