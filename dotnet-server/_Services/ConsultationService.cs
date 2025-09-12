@@ -74,7 +74,7 @@ namespace DotNet.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return false;
             var parts = s.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            return parts.Length >= 2 && parts.All(p => p.Length >= 2);
+            return parts.Length >= 1 && parts.All(p => p.Length >= 2);
         }
 
         private static bool LooksLikePhone(string s)
@@ -89,7 +89,8 @@ namespace DotNet.Services
             if (string.IsNullOrWhiteSpace(s)) return false;
             var t = s.ToLowerInvariant();
             // require a day or a time window indicator (either is enough)
-            var hasDay = Regex.IsMatch(t, @"\b(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|weekday|weekend)\b");
+            var hasDay = Regex.IsMatch(t,
+                @"\b(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|weekdays?|weekends?)\b");
             var hasTime = Regex.IsMatch(t, @"\b(morning|afternoon|evening|any\s*time|anytime|after\s*\d|before\s*\d|am|pm)\b");
             return hasDay || hasTime;
         }
@@ -112,18 +113,31 @@ namespace DotNet.Services
 
             foreach (var m in msgs.Where(m => m.Role == "user"))
             {
-                var text = m.Content ?? "";
-
-                // Name: two words with letters (case-insensitive; we Title-case later)
-                var nameMatch = Regex.Match(text,
-                    @"\b([A-Za-z][A-Za-z'’-]+)\s+([A-Za-z][A-Za-z'’-]+(?:\s+[A-Za-z][A-Za-z'’-]+)?)\b");
-                if (nameMatch.Success && string.IsNullOrWhiteSpace(name))
-                    name = ToTitle(nameMatch.Value.Trim());
+                var text = m.Content ?? string.Empty;
 
                 // Phone: capture common formats
                 var phoneMatch = Regex.Match(text, @"(\+?\d[\d\-\s\(\)]{7,}\d)");
                 if (phoneMatch.Success && string.IsNullOrWhiteSpace(phone))
                     phone = NormalizePhone(phoneMatch.Value);
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    // Prefer two-word names
+                    var nameMatch = Regex.Match(text,
+                        @"\b([A-Za-z][A-Za-z'’-]+)\s+([A-Za-z][A-Za-z'’-]+(?:\s+[A-Za-z][A-Za-z'’-]+)?)\b");
+                    if (nameMatch.Success)
+                    {
+                        name = ToTitle(nameMatch.Value.Trim());
+                    }
+                    else if (phoneMatch.Success)
+                    {
+                        // Fallback: single word immediately before the phone number
+                        var beforePhone = text[..phoneMatch.Index];
+                        var singleNameMatch = Regex.Match(beforePhone, @"\b([A-Za-z][A-Za-z'’-]+)\b\s*$");
+                        if (singleNameMatch.Success)
+                            name = ToTitle(singleNameMatch.Value.Trim());
+                    }
+                }
 
                 if (!string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(phone))
                     break;
@@ -785,7 +799,7 @@ namespace DotNet.Services
 
                 // AVAILABILITY (keep their words; we’ll validate with LooksLikeAvailability)
                 if (Regex.IsMatch(text,
-                        @"\b(weekday|weekend|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|morning|afternoon|evening|after\s*\d|before\s*\d|am|pm|free on|can do)\b",
+                        @"\b(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?|mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun|weekdays?|weekends?|morning|afternoon|evening|after\s*\d|before\s*\d|am|pm|free on|can do)\b",
                         RegexOptions.IgnoreCase))
                 {
                     consultation.Availability = text;
