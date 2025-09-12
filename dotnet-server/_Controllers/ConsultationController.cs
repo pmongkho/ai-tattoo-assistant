@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using DotNet.Models.Requests;
 using DotNet.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -70,12 +71,15 @@ namespace DotNet.Controllers
 
         [HttpPost("{id:guid}/message-with-image")]
         [AllowAnonymous] // ✨ allow public chat start
-        public async Task<IActionResult> SendMessageWithImage(Guid id, [FromForm] ConsultationMessageWithImageRequest request)
+        public async Task<IActionResult> SendMessageWithImage(
+            Guid id,
+            [FromForm] string message,
+            [FromForm] IFormFile image)
         {
             try
             {
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
-                var response = await _consultationService.SendMessageWithImageAsync(id, userId, request.Message, request.Image);
+                var response = await _consultationService.SendMessageWithImageAsync(id, userId, message, image);
                 return Ok(new { response });
             }
             catch (KeyNotFoundException ex)
