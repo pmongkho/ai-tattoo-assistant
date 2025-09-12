@@ -1,7 +1,6 @@
 // DotNet/Models/Requests/ConsultationRequests.cs
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Http;
 
 namespace DotNet.Models.Requests
 {
@@ -19,14 +18,6 @@ namespace DotNet.Models.Requests
     {
         [Required]
         public string Message { get; set; }
-    }
-
-    public class ConsultationMessageWithImageRequest
-    {
-        public string Message { get; set; }
-        
-        [Required]
-        public IFormFile Image { get; set; }
     }
 
     public class UpdateConsultationStatusRequest
