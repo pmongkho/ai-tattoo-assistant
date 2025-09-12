@@ -258,26 +258,45 @@ Wrap-up:
             {
                 if (msg.ImageUrl != null)
                 {
-                    // Include image URL for messages with images
-                    messages.Add(new
+                    var imageUrl = msg.ImageUrl;
+                    if (!imageUrl.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
                     {
-                        role = msg.Role,
-                        content = new object[]
+                        try
                         {
-                            new { type = "text", text = msg.Content },
-                            new { type = "image_url", image_url = new { url = msg.ImageUrl } }
+                            using var imgResp = await _httpClient.GetAsync(imageUrl);
+                            imgResp.EnsureSuccessStatusCode();
+                            var bytes = await imgResp.Content.ReadAsByteArrayAsync();
+                            var mime = imgResp.Content.Headers.ContentType?.MediaType ?? "image/png";
+                            imageUrl = $"data:{mime};base64,{Convert.ToBase64String(bytes)}";
                         }
-                    });
-                }
-                else
-                {
-                    // Regular text-only message
-                    messages.Add(new
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to fetch image from {Url}", imageUrl);
+                            imageUrl = null;
+                        }
+                    }
+
+                    if (imageUrl != null)
                     {
-                        role = msg.Role,
-                        content = msg.Content
-                    });
+                        messages.Add(new
+                        {
+                            role = msg.Role,
+                            content = new object[]
+                            {
+                                new { type = "text", text = msg.Content },
+                                new { type = "image_url", image_url = new { url = imageUrl } }
+                            }
+                        });
+                        continue;
+                    }
                 }
+
+                // Regular text-only message or image fetch failed
+                messages.Add(new
+                {
+                    role = msg.Role,
+                    content = msg.Content
+                });
             }
 
             var payload = new
