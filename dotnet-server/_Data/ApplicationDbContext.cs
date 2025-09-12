@@ -19,6 +19,7 @@ namespace DotNet.Data
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<UserImage> UserImages { get; set; }
         public DbSet<ClientProfile> ClientProfiles { get; set; }
+        public DbSet<Tenant> Tenants { get; set; }
         
         protected override void OnModelCreating(ModelBuilder builder)
         {
