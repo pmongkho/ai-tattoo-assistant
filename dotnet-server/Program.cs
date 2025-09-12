@@ -2,6 +2,7 @@ using System.Text;
 using DotNet.Data;
 using DotNet.Models;
 using DotNet.Services;
+using DotNet.Controllers;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Resend;
@@ -259,6 +260,7 @@ public static class ProgramExtensions
     {
         // Configure API
         services.AddControllers();
+        services.AddScoped<TattooController>();
         services.AddSwaggerServices();
 
         // Configure CORS
