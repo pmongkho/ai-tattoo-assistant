@@ -9,6 +9,7 @@ namespace DotNet.Models
 
     public class MetaEntry
     {
+        public string Id { get; set; } = string.Empty;
         public List<MetaMessaging> Messaging { get; set; } = new();
     }
 
