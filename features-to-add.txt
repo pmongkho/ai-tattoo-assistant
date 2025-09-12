@@ -10,4 +10,9 @@ Add AI image generation for tattoo concept visualization.
 Ensure the application works well on mobile devices.
 Add progressive web app capabilities.
 
+3. Multi-Tenant Onboarding and Database Migrations
+
+Create database migrations to fully support isolated tenant data.
+Build onboarding flows so new artists can register and initialize their tenant workspace.
+
 Phase 2: Deploy When Ready
