@@ -1,7 +1,3 @@
 {
-  "routes": {
-    "/chat": {},
-    "/login": {},
-    "/verify-email": {}
-  }
+  "routes": {}
 }

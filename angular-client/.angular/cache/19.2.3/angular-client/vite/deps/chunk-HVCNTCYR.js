@@ -6,7 +6,7 @@ import {
   __spreadProps,
   __spreadValues,
   map
-} from "./chunk-JOIKPE53.js";
+} from "./chunk-GFEWMZOR.js";
 
 // node_modules/@angular/core/fesm2022/weak_ref-DrMdAIDh.mjs
 function setAlternateWeakRefImpl(impl) {
@@ -874,8 +874,8 @@ function setContainer(eventInfo, container) {
 function getTimestamp(eventInfo) {
   return eventInfo.timeStamp;
 }
-function setTimestamp(eventInfo, timestamp) {
-  eventInfo.timeStamp = timestamp;
+function setTimestamp(eventInfo, timestamp2) {
+  eventInfo.timeStamp = timestamp2;
 }
 function getAction(eventInfo) {
   return eventInfo.eia;
@@ -914,13 +914,13 @@ function cloneEventInfo(eventInfo) {
     eir: eventInfo.eir
   };
 }
-function createEventInfoFromParameters(eventType, event, targetElement, container, timestamp, action, isReplay, a11yClickKey) {
+function createEventInfoFromParameters(eventType, event, targetElement, container, timestamp2, action, isReplay, a11yClickKey) {
   return {
     eventType,
     event,
     targetElement,
     eic: container,
-    timeStamp: timestamp,
+    timeStamp: timestamp2,
     eia: action,
     eirp: isReplay,
     eiack: a11yClickKey
@@ -958,8 +958,8 @@ var EventInfoWrapper = class _EventInfoWrapper {
   getTimestamp() {
     return getTimestamp(this.eventInfo);
   }
-  setTimestamp(timestamp) {
-    setTimestamp(this.eventInfo, timestamp);
+  setTimestamp(timestamp2) {
+    setTimestamp(this.eventInfo, timestamp2);
   }
   getAction() {
     const action = getAction(this.eventInfo);
@@ -2401,13 +2401,13 @@ function newArray(size, value) {
   }
   return list;
 }
-function arraySplice(array, index, count) {
-  const length = array.length - count;
+function arraySplice(array, index, count2) {
+  const length = array.length - count2;
   while (index < length) {
-    array[index] = array[index + count];
+    array[index] = array[index + count2];
     index++;
   }
-  while (count--) {
+  while (count2--) {
     array.pop();
   }
 }
@@ -3852,10 +3852,10 @@ function setBindingIndex(value) {
 function nextBindingIndex() {
   return instructionState.lFrame.bindingIndex++;
 }
-function incrementBindingIndex(count) {
+function incrementBindingIndex(count2) {
   const lFrame = instructionState.lFrame;
   const index = lFrame.bindingIndex;
-  lFrame.bindingIndex = lFrame.bindingIndex + count;
+  lFrame.bindingIndex = lFrame.bindingIndex + count2;
   return index;
 }
 function isInI18nBlock() {
@@ -4115,9 +4115,9 @@ function callHooks(currentView, arr, initPhase, currentNodeIndex) {
   ngDevMode && assertEqual(isInCheckNoChangesMode(), false, "Hooks should never be run when in check no changes mode.");
   const startIndex = currentNodeIndex !== void 0 ? currentView[PREORDER_HOOK_FLAGS] & 65535 : 0;
   const nodeIndexLimit = currentNodeIndex != null ? currentNodeIndex : -1;
-  const max = arr.length - 1;
+  const max2 = arr.length - 1;
   let lastNodeIndexFound = 0;
-  for (let i = startIndex; i < max; i++) {
+  for (let i = startIndex; i < max2; i++) {
     const hook = arr[i + 1];
     if (typeof hook === "number") {
       lastNodeIndexFound = arr[i];
@@ -7895,7 +7895,7 @@ function tagSet(tags) {
   for (const t of tags.split(",")) res[t] = true;
   return res;
 }
-function merge(...sets) {
+function merge2(...sets) {
   const res = {};
   for (const s of sets) {
     for (const v in s) {
@@ -7907,14 +7907,14 @@ function merge(...sets) {
 var VOID_ELEMENTS = tagSet("area,br,col,hr,img,wbr");
 var OPTIONAL_END_TAG_BLOCK_ELEMENTS = tagSet("colgroup,dd,dt,li,p,tbody,td,tfoot,th,thead,tr");
 var OPTIONAL_END_TAG_INLINE_ELEMENTS = tagSet("rp,rt");
-var OPTIONAL_END_TAG_ELEMENTS = merge(OPTIONAL_END_TAG_INLINE_ELEMENTS, OPTIONAL_END_TAG_BLOCK_ELEMENTS);
-var BLOCK_ELEMENTS = merge(OPTIONAL_END_TAG_BLOCK_ELEMENTS, tagSet("address,article,aside,blockquote,caption,center,del,details,dialog,dir,div,dl,figure,figcaption,footer,h1,h2,h3,h4,h5,h6,header,hgroup,hr,ins,main,map,menu,nav,ol,pre,section,summary,table,ul"));
-var INLINE_ELEMENTS = merge(OPTIONAL_END_TAG_INLINE_ELEMENTS, tagSet("a,abbr,acronym,audio,b,bdi,bdo,big,br,cite,code,del,dfn,em,font,i,img,ins,kbd,label,map,mark,picture,q,ruby,rp,rt,s,samp,small,source,span,strike,strong,sub,sup,time,track,tt,u,var,video"));
-var VALID_ELEMENTS = merge(VOID_ELEMENTS, BLOCK_ELEMENTS, INLINE_ELEMENTS, OPTIONAL_END_TAG_ELEMENTS);
+var OPTIONAL_END_TAG_ELEMENTS = merge2(OPTIONAL_END_TAG_INLINE_ELEMENTS, OPTIONAL_END_TAG_BLOCK_ELEMENTS);
+var BLOCK_ELEMENTS = merge2(OPTIONAL_END_TAG_BLOCK_ELEMENTS, tagSet("address,article,aside,blockquote,caption,center,del,details,dialog,dir,div,dl,figure,figcaption,footer,h1,h2,h3,h4,h5,h6,header,hgroup,hr,ins,main,map,menu,nav,ol,pre,section,summary,table,ul"));
+var INLINE_ELEMENTS = merge2(OPTIONAL_END_TAG_INLINE_ELEMENTS, tagSet("a,abbr,acronym,audio,b,bdi,bdo,big,br,cite,code,del,dfn,em,font,i,img,ins,kbd,label,map,mark,picture,q,ruby,rp,rt,s,samp,small,source,span,strike,strong,sub,sup,time,track,tt,u,var,video"));
+var VALID_ELEMENTS = merge2(VOID_ELEMENTS, BLOCK_ELEMENTS, INLINE_ELEMENTS, OPTIONAL_END_TAG_ELEMENTS);
 var URI_ATTRS = tagSet("background,cite,href,itemtype,longdesc,poster,src,xlink:href");
 var HTML_ATTRS = tagSet("abbr,accesskey,align,alt,autoplay,axis,bgcolor,border,cellpadding,cellspacing,class,clear,color,cols,colspan,compact,controls,coords,datetime,default,dir,download,face,headers,height,hidden,hreflang,hspace,ismap,itemscope,itemprop,kind,label,lang,language,loop,media,muted,nohref,nowrap,open,preload,rel,rev,role,rows,rowspan,rules,scope,scrolling,shape,size,sizes,span,srclang,srcset,start,summary,tabindex,target,title,translate,type,usemap,valign,value,vspace,width");
 var ARIA_ATTRS = tagSet("aria-activedescendant,aria-atomic,aria-autocomplete,aria-busy,aria-checked,aria-colcount,aria-colindex,aria-colspan,aria-controls,aria-current,aria-describedby,aria-details,aria-disabled,aria-dropeffect,aria-errormessage,aria-expanded,aria-flowto,aria-grabbed,aria-haspopup,aria-hidden,aria-invalid,aria-keyshortcuts,aria-label,aria-labelledby,aria-level,aria-live,aria-modal,aria-multiline,aria-multiselectable,aria-orientation,aria-owns,aria-placeholder,aria-posinset,aria-pressed,aria-readonly,aria-relevant,aria-required,aria-roledescription,aria-rowcount,aria-rowindex,aria-rowspan,aria-selected,aria-setsize,aria-sort,aria-valuemax,aria-valuemin,aria-valuenow,aria-valuetext");
-var VALID_ATTRS = merge(URI_ATTRS, HTML_ATTRS, ARIA_ATTRS);
+var VALID_ATTRS = merge2(URI_ATTRS, HTML_ATTRS, ARIA_ATTRS);
 var SKIP_TRAVERSING_CONTENT_IF_INVALID_ELEMENTS = tagSet("script,style,template");
 var SanitizingHtmlSerializer = class {
   // Explicitly track if something was stripped, to avoid accidentally warning of sanitization just
@@ -8359,8 +8359,8 @@ function assertComponentDef(type) {
     throw new RuntimeError(906, `The ${stringifyForError(type)} is not an Angular component, make sure it has the \`@Component\` decorator.`);
   }
 }
-function throwMultipleComponentError(tNode, first, second) {
-  throw new RuntimeError(-300, `Multiple components match node with tagname ${tNode.value}: ${stringifyForError(first)} and ${stringifyForError(second)}`);
+function throwMultipleComponentError(tNode, first2, second) {
+  throw new RuntimeError(-300, `Multiple components match node with tagname ${tNode.value}: ${stringifyForError(first2)} and ${stringifyForError(second)}`);
 }
 function throwErrorIfNoChangesMode(creationMode, oldValue, currValue, propName, lView) {
   const hostComponentDef = getDeclarationComponentDef(lView);
@@ -11274,9 +11274,9 @@ function decompressNodeLocation(path) {
   const [_, refNodeId, refNodeName, rest] = matches;
   const ref = refNodeId ? parseInt(refNodeId, 10) : refNodeName;
   const steps = [];
-  for (const [_2, step, count] of rest.matchAll(/(f|n)(\d*)/g)) {
-    const repeat = parseInt(count, 10) || 1;
-    steps.push(step, repeat);
+  for (const [_2, step, count2] of rest.matchAll(/(f|n)(\d*)/g)) {
+    const repeat2 = parseInt(count2, 10) || 1;
+    steps.push(step, repeat2);
   }
   return [ref, ...steps];
 }
@@ -11340,9 +11340,9 @@ function locateNextRNode(hydrationInfo, tView, lView, tNode) {
   }
   return native;
 }
-function siblingAfter(skip, from) {
+function siblingAfter(skip2, from) {
   let currentNode = from;
-  for (let i = 0; i < skip; i++) {
+  for (let i = 0; i < skip2; i++) {
     ngDevMode && validateSiblingNodeExists(currentNode);
     currentNode = currentNode.nextSibling;
   }
@@ -11352,8 +11352,8 @@ function stringifyNavigationInstructions(instructions) {
   const container = [];
   for (let i = 0; i < instructions.length; i += 2) {
     const step = instructions[i];
-    const repeat = instructions[i + 1];
-    for (let r = 0; r < repeat; r++) {
+    const repeat2 = instructions[i + 1];
+    for (let r = 0; r < repeat2; r++) {
       container.push(step === NODE_NAVIGATION_STEP_FIRST_CHILD ? "firstChild" : "nextSibling");
     }
   }
@@ -11363,8 +11363,8 @@ function navigateToNode(from, instructions) {
   let node = from;
   for (let i = 0; i < instructions.length; i += 2) {
     const step = instructions[i];
-    const repeat = instructions[i + 1];
-    for (let r = 0; r < repeat; r++) {
+    const repeat2 = instructions[i + 1];
+    for (let r = 0; r < repeat2; r++) {
       if (ngDevMode && !node) {
         throw nodeNotFoundAtPathError(from, stringifyNavigationInstructions(instructions));
       }
@@ -11640,9 +11640,9 @@ function appendI18nNodeToCollection(context, state, astNode) {
   }
   return currentNode;
 }
-function skipSiblingNodes(state, skip) {
+function skipSiblingNodes(state, skip2) {
   let currentNode = state.currentNode;
-  for (let i = 0; i < skip; i++) {
+  for (let i = 0; i < skip2; i++) {
     if (!currentNode) {
       break;
     }
@@ -14587,13 +14587,13 @@ var IdleScheduler = class _IdleScheduler {
     })
   );
 };
-function onTimer(delay) {
-  return (callback, injector) => scheduleTimerTrigger(delay, callback, injector);
+function onTimer(delay2) {
+  return (callback, injector) => scheduleTimerTrigger(delay2, callback, injector);
 }
-function scheduleTimerTrigger(delay, callback, injector) {
+function scheduleTimerTrigger(delay2, callback, injector) {
   const scheduler = injector.get(TimerScheduler);
   const cleanupFn = () => scheduler.remove(callback);
-  scheduler.add(delay, callback);
+  scheduler.add(delay2, callback);
   return cleanupFn;
 }
 var TimerScheduler = class _TimerScheduler {
@@ -14614,9 +14614,9 @@ var TimerScheduler = class _TimerScheduler {
   // the current callback invocation. The shape of this list is the same
   // as the shape of the `current` list.
   deferred = [];
-  add(delay, callback) {
+  add(delay2, callback) {
     const target = this.executingCallbacks ? this.deferred : this.current;
-    this.addToQueue(target, Date.now() + delay, callback);
+    this.addToQueue(target, Date.now() + delay2, callback);
     this.scheduleTimer();
   }
   remove(callback) {
@@ -14704,9 +14704,9 @@ var TimerScheduler = class _TimerScheduler {
       // frame duration.
       this.invokeTimerAt && this.invokeTimerAt - invokeAt > FRAME_DURATION_MS) {
         this.clearTimeout();
-        const timeout = Math.max(invokeAt - now, FRAME_DURATION_MS);
+        const timeout2 = Math.max(invokeAt - now, FRAME_DURATION_MS);
         this.invokeTimerAt = invokeAt;
-        this.timeoutId = setTimeout(callback, timeout);
+        this.timeoutId = setTimeout(callback, timeout2);
       }
     }
   }
@@ -14893,7 +14893,7 @@ function applyDeferBlockStateWithScheduling(newState, lDetails, lContainer, tNod
     lDetails[NEXT_DEFER_BLOCK_STATE] = newState;
   }
 }
-function scheduleDeferBlockUpdate(timeout, lDetails, tNode, lContainer, hostLView) {
+function scheduleDeferBlockUpdate(timeout2, lDetails, tNode, lContainer, hostLView) {
   const callback = () => {
     const nextState = lDetails[NEXT_DEFER_BLOCK_STATE];
     lDetails[STATE_IS_FROZEN_UNTIL] = null;
@@ -14902,7 +14902,7 @@ function scheduleDeferBlockUpdate(timeout, lDetails, tNode, lContainer, hostLVie
       renderDeferBlockState(nextState, tNode, lContainer);
     }
   };
-  return scheduleTimerTrigger(timeout, callback, hostLView[INJECTOR]);
+  return scheduleTimerTrigger(timeout2, callback, hostLView[INJECTOR]);
 }
 function isValidStateChange(currentState, newState) {
   return currentState < newState;
@@ -15799,13 +15799,13 @@ var Testability = class _Testability {
       };
     });
   }
-  addCallback(cb, timeout, updateCb) {
+  addCallback(cb, timeout2, updateCb) {
     let timeoutId = -1;
-    if (timeout && timeout > 0) {
+    if (timeout2 && timeout2 > 0) {
       timeoutId = setTimeout(() => {
         this._callbacks = this._callbacks.filter((cb2) => cb2.timeoutId !== timeoutId);
         cb();
-      }, timeout);
+      }, timeout2);
     }
     this._callbacks.push({
       doneCb: cb,
@@ -15825,11 +15825,11 @@ var Testability = class _Testability {
    *    pending macrotasks changes. If this callback returns true doneCb will not be invoked
    *    and no further updates will be issued.
    */
-  whenStable(doneCb, timeout, updateCb) {
+  whenStable(doneCb, timeout2, updateCb) {
     if (updateCb && !this.taskTrackingZone) {
       throw new Error('Task tracking zone is required when passing an update callback to whenStable(). Is "zone.js/plugins/task-tracking" loaded?');
     }
-    this.addCallback(doneCb, timeout, updateCb);
+    this.addCallback(doneCb, timeout2, updateCb);
     this._runCallbacksIfReady();
   }
   /**
@@ -17163,39 +17163,39 @@ function ɵɵdeferHydrateOnImmediate() {
     triggerHydrationFromBlockName(injector, ssrUniqueId);
   }
 }
-function ɵɵdeferOnTimer(delay) {
+function ɵɵdeferOnTimer(delay2) {
   const lView = getLView();
   const tNode = getCurrentTNode();
   if (ngDevMode) {
-    trackTriggerForDebugging(lView[TVIEW], tNode, `on timer(${delay}ms)`);
+    trackTriggerForDebugging(lView[TVIEW], tNode, `on timer(${delay2}ms)`);
   }
   if (!shouldAttachTrigger(0, lView, tNode)) return;
-  scheduleDelayedTrigger(onTimer(delay));
+  scheduleDelayedTrigger(onTimer(delay2));
 }
-function ɵɵdeferPrefetchOnTimer(delay) {
+function ɵɵdeferPrefetchOnTimer(delay2) {
   const lView = getLView();
   const tNode = getCurrentTNode();
   if (ngDevMode) {
-    trackTriggerForDebugging(lView[TVIEW], tNode, `prefetch on timer(${delay}ms)`);
+    trackTriggerForDebugging(lView[TVIEW], tNode, `prefetch on timer(${delay2}ms)`);
   }
   if (!shouldAttachTrigger(1, lView, tNode)) return;
-  scheduleDelayedPrefetching(onTimer(delay));
+  scheduleDelayedPrefetching(onTimer(delay2));
 }
-function ɵɵdeferHydrateOnTimer(delay) {
+function ɵɵdeferHydrateOnTimer(delay2) {
   const lView = getLView();
   const tNode = getCurrentTNode();
   if (ngDevMode) {
-    trackTriggerForDebugging(lView[TVIEW], tNode, `hydrate on timer(${delay}ms)`);
+    trackTriggerForDebugging(lView[TVIEW], tNode, `hydrate on timer(${delay2}ms)`);
   }
   if (!shouldAttachTrigger(2, lView, tNode)) return;
   const hydrateTriggers = getHydrateTriggers(getTView(), tNode);
   hydrateTriggers.set(5, {
-    delay
+    delay: delay2
   });
   if (false) {
     triggerDeferBlock(2, lView, tNode);
   } else {
-    scheduleDelayedHydrating(onTimer(delay), lView, tNode);
+    scheduleDelayedHydrating(onTimer(delay2), lView, tNode);
   }
 }
 function ɵɵdeferOnHover(triggerIndex, walkUpTimes) {
@@ -19637,14 +19637,14 @@ function generateBindingUpdateOpCodes(updateOpCodes, str, destinationNode, attrN
   return mask;
 }
 function countBindings(opCodes) {
-  let count = 0;
+  let count2 = 0;
   for (let i = 0; i < opCodes.length; i++) {
     const opCode = opCodes[i];
     if (typeof opCode === "number" && opCode < 0) {
-      count++;
+      count2++;
     }
   }
-  return count;
+  return count2;
 }
 function toMaskBit(bindingIndex) {
   return 1 << Math.min(bindingIndex, 31);
@@ -20238,8 +20238,8 @@ function ɵɵprojection(nodeIndex, selectorIndex = 0, attrs, fallbackTemplateFn,
   const hydrationInfo = lView[HYDRATION];
   const isNodeCreationMode = !hydrationInfo || isInSkipHydrationBlock$1();
   const componentHostNode = lView[DECLARATION_COMPONENT_VIEW][T_HOST];
-  const isEmpty = componentHostNode.projection[tProjectionNode.projection] === null;
-  if (isEmpty && fallbackIndex !== null) {
+  const isEmpty2 = componentHostNode.projection[tProjectionNode.projection] === null;
+  if (isEmpty2 && fallbackIndex !== null) {
     insertFallbackContent(lView, tView, fallbackIndex);
   } else if (isNodeCreationMode && !isDetachedByI18n(tProjectionNode)) {
     applyProjection(tView, lView, tProjectionNode);
@@ -26955,4 +26955,4 @@ export {
    * found in the LICENSE file at https://angular.dev/license
    *)
 */
-//# sourceMappingURL=chunk-HHC2LIPL.js.map
+//# sourceMappingURL=chunk-HVCNTCYR.js.map

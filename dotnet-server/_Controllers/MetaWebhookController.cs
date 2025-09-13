@@ -22,7 +22,7 @@ namespace DotNet.Controllers
         {
             _chatController = chatController;
             _tenantService = tenantService;
-            _verifyToken = configuration["MetaVerifyToken"] ?? "tattoo-verify-prod";
+            _verifyToken = configuration["MetaAccess:FbVerifyToken"] ?? "tattoo-verify-prod";
         }
 
         [HttpGet]
