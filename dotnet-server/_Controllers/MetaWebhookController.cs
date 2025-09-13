@@ -21,10 +21,15 @@ namespace DotNet.Controllers
         }
 
         [HttpGet]
-        public IActionResult Verify(string hub_mode, string hub_challenge, string hub_verify_token)
-            => (hub_mode == "subscribe" && hub_verify_token == _verifyToken)
-               ? Ok(hub_challenge)
-               : Unauthorized();
+        public IActionResult Verify(
+            [FromQuery(Name = "hub.mode")] string mode,
+            [FromQuery(Name = "hub.challenge")] string challenge,
+            [FromQuery(Name = "hub.verify_token")] string verifyToken)
+        {
+            return (mode == "subscribe" && verifyToken == _verifyToken)
+                ? Content(challenge)
+                : Unauthorized();
+        }
 
         [HttpPost]
         public async Task<IActionResult> Receive([FromBody] MetaEvent metaEvent)
