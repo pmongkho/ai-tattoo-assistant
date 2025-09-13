@@ -28,11 +28,16 @@
 						"stylePreprocessorOptions": {
 							"includePaths": ["src"]
 						},
-						"scripts": [],
-						"server": "src/main.server.ts",
-						"prerender": false,
-						"ssr": false
-					},
+                                                "scripts": [],
+                                                "server": "src/main.server.ts",
+                                                "prerender": false,
+                                                "ssr": false,
+                                                "optimization": {
+                                                        "fonts": {
+                                                                "inline": false
+                                                        }
+                                                }
+                                        },
 					"configurations": {
 						"production": {
 							"budgets": [
