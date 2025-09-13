@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { TenantService } from '../../_services/tenant.service';
 import { Observable } from 'rxjs';
 import { Tenant } from '../../_services/tenant.service';
@@ -14,16 +14,17 @@ import { Tenant } from '../../_services/tenant.service';
 })
 export class ConnectComponent {
   tenants$!: Observable<Tenant[]>;
-  form = this.fb.group({
-    name: [''],
-    metaPageId: [''],
-    pageAccessToken: [''],
-    instagramAccountId: [''],
-    instagramToken: [''],
-    plan: ['trial']
-  });
+  form: FormGroup;
 
   constructor(private fb: FormBuilder, private tenantService: TenantService) {
+    this.form = this.fb.group({
+      name: [''],
+      metaPageId: [''],
+      pageAccessToken: [''],
+      instagramAccountId: [''],
+      instagramToken: [''],
+      plan: ['trial']
+    });
     this.loadTenants();
   }
 
