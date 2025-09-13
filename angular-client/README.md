@@ -57,3 +57,17 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Deploying to Vercel
+
+This project includes a `vercel.json` configuration so Vercel knows how to build and serve the Angular app.
+
+To deploy:
+
+1. Install the [Vercel CLI](https://vercel.com/docs/cli).
+2. From this `angular-client` directory, run:
+   ```bash
+   vercel --prod
+   ```
+3. Vercel will run `npm run build` and serve the contents of `dist/angular-client/browser`.
+
