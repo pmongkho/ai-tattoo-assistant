@@ -12,19 +12,13 @@ namespace DotNet.Controllers
     [Route("api/meta")]
     public class MetaWebhookController : ControllerBase
     {
-        private readonly TattooController _chatController;
-        private readonly ITenantService _tenantService;
         private readonly string _verifyToken;
         private readonly ILogger<MetaWebhookController> _logger;
 
         public MetaWebhookController(
-            TattooController chatController,
-            ITenantService tenantService,
             IConfiguration configuration,
             ILogger<MetaWebhookController> logger)
         {
-            _chatController = chatController;
-            _tenantService = tenantService;
             _verifyToken = configuration["MetaAccess:FbVerifyToken"] ?? "tattoo-verify-prod";
             _logger = logger;
         }
@@ -54,7 +48,10 @@ namespace DotNet.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Receive([FromBody] MetaEvent metaEvent)
+        public async Task<IActionResult> Receive(
+            [FromBody] MetaEvent metaEvent,
+            [FromServices] TattooController chatController,
+            [FromServices] ITenantService tenantService)
         {
             if (metaEvent.Entry.Count == 0 || metaEvent.Entry[0].Messaging.Count == 0)
             {
@@ -64,10 +61,10 @@ namespace DotNet.Controllers
             var entry = metaEvent.Entry[0];
             var msg = entry.Messaging[0];
 
-            var tenant = await _tenantService.FindByMetaIdAsync(entry.Id);
-            var accessToken = _tenantService.DecryptToken(tenant?.EncryptedPageAccessToken);
+            var tenant = await tenantService.FindByMetaIdAsync(entry.Id);
+            var accessToken = tenantService.DecryptToken(tenant?.EncryptedPageAccessToken);
 
-            var response = await _chatController.Consult(new TattooController.ChatRequest
+            var response = await chatController.Consult(new TattooController.ChatRequest
             {
                 Message = msg.Message.Text,
                 UserId = msg.Sender.Id
