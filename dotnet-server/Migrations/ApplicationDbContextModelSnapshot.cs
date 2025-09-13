@@ -340,6 +340,40 @@ namespace dotnet_server.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DotNet.Models.Tenant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EncryptedInstagramToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("EncryptedPageAccessToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("InstagramAccountId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("MetaPageId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Plan")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("TrialEndsAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Tenants");
+                });
+
             modelBuilder.Entity("DotNet.Models.UserImage", b =>
                 {
                     b.Property<int>("Id")
