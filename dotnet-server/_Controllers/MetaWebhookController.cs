@@ -4,6 +4,7 @@ using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace DotNet.Controllers
 {
@@ -14,26 +15,42 @@ namespace DotNet.Controllers
         private readonly TattooController _chatController;
         private readonly ITenantService _tenantService;
         private readonly string _verifyToken;
+        private readonly ILogger<MetaWebhookController> _logger;
 
         public MetaWebhookController(
             TattooController chatController,
             ITenantService tenantService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<MetaWebhookController> logger)
         {
             _chatController = chatController;
             _tenantService = tenantService;
             _verifyToken = configuration["MetaAccess:FbVerifyToken"] ?? "tattoo-verify-prod";
+            _logger = logger;
         }
 
         [HttpGet]
         public IActionResult Verify(
-            [FromQuery(Name = "hub.mode")] string mode,
-            [FromQuery(Name = "hub.challenge")] string challenge,
-            [FromQuery(Name = "hub.verify_token")] string verifyToken)
+            [FromQuery(Name = "hub.mode")] string? mode,
+            [FromQuery(Name = "hub.challenge")] string? challenge,
+            [FromQuery(Name = "hub.verify_token")] string? verifyToken)
         {
-            return (string.Equals(mode, "subscribe", StringComparison.OrdinalIgnoreCase) && verifyToken == _verifyToken)
-                ? Content(challenge)
-                : Unauthorized();
+            try
+            {
+                if (string.IsNullOrEmpty(mode) || string.IsNullOrEmpty(challenge) || string.IsNullOrEmpty(verifyToken))
+                {
+                    return BadRequest("Missing hub parameters.");
+                }
+
+                return (mode.Equals("subscribe", StringComparison.OrdinalIgnoreCase) && verifyToken == _verifyToken)
+                    ? Content(challenge)
+                    : Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error verifying Meta webhook.");
+                return StatusCode(500, "Failed to verify webhook.");
+            }
         }
 
         [HttpPost]
