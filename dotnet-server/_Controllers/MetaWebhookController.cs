@@ -3,6 +3,7 @@ using System.Text.Json;
 using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 
 namespace DotNet.Controllers
 {
@@ -12,12 +13,16 @@ namespace DotNet.Controllers
     {
         private readonly TattooController _chatController;
         private readonly ITenantService _tenantService;
-        private readonly string _verifyToken = "tattoo-verify-prod";
+        private readonly string _verifyToken;
 
-        public MetaWebhookController(TattooController chatController, ITenantService tenantService)
+        public MetaWebhookController(
+            TattooController chatController,
+            ITenantService tenantService,
+            IConfiguration configuration)
         {
             _chatController = chatController;
             _tenantService = tenantService;
+            _verifyToken = configuration["MetaVerifyToken"] ?? "tattoo-verify-prod";
         }
 
         [HttpGet]
@@ -26,7 +31,7 @@ namespace DotNet.Controllers
             [FromQuery(Name = "hub.challenge")] string challenge,
             [FromQuery(Name = "hub.verify_token")] string verifyToken)
         {
-            return (mode == "subscribe" && verifyToken == _verifyToken)
+            return (string.Equals(mode, "subscribe", StringComparison.OrdinalIgnoreCase) && verifyToken == _verifyToken)
                 ? Content(challenge)
                 : Unauthorized();
         }
