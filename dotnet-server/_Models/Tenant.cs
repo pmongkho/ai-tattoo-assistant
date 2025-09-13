@@ -36,5 +36,15 @@ namespace DotNet.Models
         /// Encrypted Instagram access token.
         /// </summary>
         public string? EncryptedInstagramToken { get; set; }
+
+        /// <summary>
+        /// Subscription plan for this tenant (trial, basic, premium).
+        /// </summary>
+        public string Plan { get; set; } = "trial";
+
+        /// <summary>
+        /// When the trial period ends, if applicable.
+        /// </summary>
+        public DateTime? TrialEndsAt { get; set; }
     }
 }
