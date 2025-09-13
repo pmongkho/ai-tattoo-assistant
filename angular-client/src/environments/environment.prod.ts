@@ -1,5 +1,4 @@
 export const environment = {
 	production: true,
-	apiUrl: 'http://backend:5000/api',
-
+	apiUrl: 'https://ai-tattoo-assistant.onrender.com/api',
 }

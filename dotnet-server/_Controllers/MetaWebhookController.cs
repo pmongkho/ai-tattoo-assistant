@@ -12,7 +12,7 @@ namespace DotNet.Controllers
     {
         private readonly TattooController _chatController;
         private readonly ITenantService _tenantService;
-        private readonly string _verifyToken = "YOUR_VERIFY_TOKEN";
+        private readonly string _verifyToken = "tattoo-verify-prod";
 
         public MetaWebhookController(TattooController chatController, ITenantService tenantService)
         {
