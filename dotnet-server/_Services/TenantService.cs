@@ -42,5 +42,19 @@ namespace DotNet.Services
                 return null;
             }
         }
+
+        public string? EncryptToken(string? token)
+        {
+            if (string.IsNullOrEmpty(token)) return null;
+            try
+            {
+                return _protector.Protect(token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to encrypt tenant token");
+                return null;
+            }
+        }
     }
 }

@@ -1,0 +1,26 @@
+<div class="space-y-6">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4 max-w-md">
+    <input formControlName="name" placeholder="Tenant name" class="w-full border p-2 rounded" />
+    <input formControlName="metaPageId" placeholder="Facebook Page ID" class="w-full border p-2 rounded" />
+    <input formControlName="pageAccessToken" placeholder="Page Access Token" class="w-full border p-2 rounded" />
+    <input formControlName="instagramAccountId" placeholder="Instagram Account ID" class="w-full border p-2 rounded" />
+    <input formControlName="instagramToken" placeholder="Instagram Token" class="w-full border p-2 rounded" />
+    <select formControlName="plan" class="w-full border p-2 rounded">
+      <option value="trial">Trial (1 week)</option>
+      <option value="basic">Basic - $50/week</option>
+      <option value="premium">Premium - $100/week + auto bookings</option>
+    </select>
+    <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded">Connect</button>
+  </form>
+
+  <div>
+    <h2 class="text-lg font-semibold mb-2">Existing Tenants</h2>
+    <ul class="list-disc pl-5" *ngIf="tenants$ | async as tenants">
+      <li *ngFor="let t of tenants">
+        {{ t.name }} - Plan: {{ t.plan }}
+        <span *ngIf="t.trialEndsAt">(trial ends {{ t.trialEndsAt | date:'mediumDate' }})</span>
+        - FB: {{ t.metaPageId || 'n/a' }} - IG: {{ t.instagramAccountId || 'n/a' }}
+      </li>
+    </ul>
+  </div>
+</div>

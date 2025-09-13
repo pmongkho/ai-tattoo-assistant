@@ -16,5 +16,10 @@ namespace DotNet.Services
         /// Decrypt an access token stored for the tenant.
         /// </summary>
         string? DecryptToken(string? encryptedToken);
+
+        /// <summary>
+        /// Encrypt a token for storage.
+        /// </summary>
+        string? EncryptToken(string? token);
     }
 }
