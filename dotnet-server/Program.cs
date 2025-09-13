@@ -270,8 +270,10 @@ public static class ProgramExtensions
             options.AddPolicy("AllowClients", policy =>
             {
                 policy.WithOrigins(
-                        "http://localhost:4200"
-                 
+                        "http://localhost:4200",
+                        "https://ai-tattoo-assistant.vercel.app/"
+
+
                     )
                     .AllowAnyHeader()
                     .AllowAnyMethod()
