@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {}
+    "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {}
   },
   "projects": {
-    "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {
+    "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
+        "projectUniqueName": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
         "projectName": "dotnet-server",
-        "projectPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
-        "packagesPath": "/Users/a_mac/.nuget/packages/",
-        "outputPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/obj/",
+        "projectPath": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj",
+        "packagesPath": "/Users/phongsavanhmongkhonvilay/.nuget/packages/",
+        "outputPath": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/Users/a_mac/.nuget/NuGet/NuGet.Config"
+          "/Users/phongsavanhmongkhonvilay/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
@@ -134,7 +134,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/Cellar/dotnet/8.0.4/libexec/sdk/8.0.104/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.100/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
