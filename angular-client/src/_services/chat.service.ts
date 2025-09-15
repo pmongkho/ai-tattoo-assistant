@@ -44,7 +44,7 @@ export class ChatApiService {
         sendMessage(consultationId: string, message: string): Observable<string> {
                 return this.http
                         .post<MessageResponse>(
-                                `${this.apiUrl}/consultations/${consultationId}/message`,
+                                `${this.apiUrl}/consultation/${consultationId}/message`,
                                 { message }
                         )
                         .pipe(map((r) => r.response ?? ''))
@@ -61,7 +61,7 @@ export class ChatApiService {
 
                 return this.http
                         .post<MessageResponse>(
-                                `${this.apiUrl}/consultations/${consultationId}/message-with-image`,
+                                `${this.apiUrl}/consultation/${consultationId}/message-with-image`,
                                 form
                         )
                         .pipe(map((r) => r.response ?? ''))
@@ -69,7 +69,7 @@ export class ChatApiService {
 
         getConsultation(consultationId: string): Observable<ConsultationDto> {
                 return this.http.get<ConsultationDto>(
-                        `${this.apiUrl}/consultations/${consultationId}`
+                        `${this.apiUrl}/consultation/${consultationId}`
                 )
         }
 

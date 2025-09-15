@@ -12,7 +12,7 @@ using Microsoft.Extensions.Logging;
 namespace DotNet.Controllers
 {
     [ApiController]
-    [Route("api/consultations")]
+    [Route("api/consultation")]
     public class ConsultationController : ControllerBase
     {
         private readonly IConsultationService _consultationService;

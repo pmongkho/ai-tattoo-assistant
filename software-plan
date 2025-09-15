@@ -26,8 +26,8 @@ Consultation AI Form    /consult/:artistHandle      Smart form that triggers AI 
 
 🌐 API Endpoints (.NET)
 Method  Route   Description
-POST    /api/consultations      Submit consultation
-GET     /api/consultations/:id  Get consultation status
+POST    /api/consultation      Submit consultation
+GET     /api/consultation/:id  Get consultation status
 
 🔗 Square API Integration
 Future enhancement: send collected contact info to Square or another booking tool once a consultation is approved.
