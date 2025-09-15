@@ -35,7 +35,19 @@ builder.Services.AddApiServices(builder.Configuration);
 builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Square"));
 builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
 builder.Services.AddScoped<IConsultationService, ConsultationService>();
-builder.Services.AddScoped<IStorageService, AzureBlobStorageService>();
+var azureStorageConnectionString =
+    Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") ??
+    builder.Configuration["AzureStorage:ConnectionString"];
+
+if (string.IsNullOrWhiteSpace(azureStorageConnectionString))
+{
+    Console.WriteLine("Azure storage connection string not found. Using NoOpStorageService.");
+    builder.Services.AddScoped<IStorageService, NoOpStorageService>();
+}
+else
+{
+    builder.Services.AddScoped<IStorageService, AzureBlobStorageService>();
+}
 builder.Services.AddScoped<IMessagingIntegrationService, MessagingIntegrationService>();
 builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddHttpClient<ChatService>();
