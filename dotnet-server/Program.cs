@@ -31,7 +31,7 @@ builder.ConfigureAppConfiguration();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddAuthenticationServices(builder.Configuration);
 builder.Services.AddFirebaseServices(builder.Configuration);
-builder.Services.AddApiServices();
+builder.Services.AddApiServices(builder.Configuration);
 builder.Services.Configure<SquareOptions>(builder.Configuration.GetSection("Square"));
 builder.Services.AddSingleton<ISquareAppointmentsService, SquareAppointmentsService>();
 builder.Services.AddScoped<IConsultationService, ConsultationService>();
@@ -257,7 +257,7 @@ public static class ProgramExtensions
     }
 
 
-    public static void AddApiServices(this IServiceCollection services)
+    public static void AddApiServices(this IServiceCollection services, IConfiguration configuration)
     {
         // Configure API
         services.AddControllers();
@@ -265,16 +265,29 @@ public static class ProgramExtensions
         services.AddSwaggerServices();
 
         // Configure CORS
+        var allowedOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? new[]
+            {
+                "http://localhost:4200",
+                "https://ai-tattoo-assistant.vercel.app"
+            };
+
+        allowedOrigins = allowedOrigins
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(origin => origin.TrimEnd('/'))
+            .Distinct()
+            .ToArray();
+
+        if (allowedOrigins.Length == 0)
+        {
+            allowedOrigins = new[] { "http://localhost:4200" };
+        }
+
         services.AddCors(options =>
         {
             options.AddPolicy("AllowClients", policy =>
             {
-                policy.WithOrigins(
-                        "http://localhost:4200",
-                        "https://ai-tattoo-assistant.vercel.app/"
-
-
-                    )
+                policy.WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();
