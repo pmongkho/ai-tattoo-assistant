@@ -36,7 +36,7 @@ export class ChatApiService {
 		}
 
                 return this.http
-                        .post<StartResponse>(`${this.apiUrl}/consultations/start`, body)
+                        .post<StartResponse>(`${this.apiUrl}/consultation/start`, body)
                         .pipe(map((r) => ({ id: r.consultationId ?? '' })))
         }
 
