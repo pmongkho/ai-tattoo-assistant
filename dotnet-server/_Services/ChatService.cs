@@ -22,6 +22,7 @@ namespace DotNet.Services
         private readonly ILogger<ChatService> _logger;
         private readonly double _temperature;
         private readonly double _topP;
+        private readonly bool _hasValidApiKey;
         private static readonly Random _rand = new();
         private static readonly ConcurrentDictionary<string, TattooConsultationData> _userData = new();
         private static readonly Regex NameRegex = new(@"\b([A-Za-z][A-Za-z'’\-]+)\s+([A-Za-z][A-Za-z'’\-]+)\b", RegexOptions.Compiled);
@@ -95,11 +96,7 @@ Wrap-up:
             // Try to get API key from environment variable first, then fallback to configuration
             _apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ??
                       configuration["OpenAI:ApiKey"];
-
-            if (string.IsNullOrEmpty(_apiKey))
-            {
-                _logger.LogError("OpenAI API key is not configured!");
-            }
+            _hasValidApiKey = !string.IsNullOrWhiteSpace(_apiKey);
 
             _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ??
                      configuration["OpenAI:AiModel"] ??
@@ -118,10 +115,13 @@ Wrap-up:
                 : "(not set)";
             _logger.LogInformation($"ChatService initialized with model: {_model}, API key: {maskedKey}");
 
-            // Configure HttpClient if an API key is available
-            if (!string.IsNullOrWhiteSpace(_apiKey))
+            if (_hasValidApiKey)
             {
                 _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            }
+            else
+            {
+                _logger.LogError("OpenAI API key is not configured. Chat responses will use a fallback message until a key is provided.");
             }
         }
 
@@ -134,7 +134,11 @@ Wrap-up:
 
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
-            EnsureApiKeyConfigured();
+            if (!_hasValidApiKey)
+            {
+                return BuildFallbackResponse(conversationHistory);
+            }
+
             var url = "https://api.openai.com/v1/chat/completions";
 
             if (conversationHistory == null)
@@ -243,7 +247,11 @@ Wrap-up:
 
         public async Task<string> GetChatResponseWithImageAsync(List<ChatMessage> conversationHistory)
         {
-            EnsureApiKeyConfigured();
+            if (!_hasValidApiKey)
+            {
+                return BuildFallbackResponse(conversationHistory);
+            }
+
             var url = "https://api.openai.com/v1/chat/completions";
 
             if (conversationHistory == null)
@@ -345,12 +353,53 @@ Wrap-up:
             return chatResponse;
         }
 
-        private void EnsureApiKeyConfigured()
+        private string BuildFallbackResponse(List<ChatMessage>? conversationHistory)
         {
-            if (string.IsNullOrWhiteSpace(_apiKey))
+            var snippet = ExtractLatestUserSnippet(conversationHistory);
+            var baseMessage = "Thanks for reaching out! Our AI tattoo assistant is warming up right now, so a human artist will follow up soon.";
+
+            if (!string.IsNullOrEmpty(snippet))
             {
-                throw new InvalidOperationException("OpenAI API key is not configured. Set the OPENAI_API_KEY environment variable or provide OpenAI:ApiKey in configuration.");
+                baseMessage += $" I jotted down your note about \"{snippet}\" so the team can pick up right where you left off.";
             }
+
+            baseMessage += " Feel free to keep sharing inspo images or any questions and we'll take it from there.";
+
+            _logger.LogWarning("Returning fallback chat response because the OpenAI API key is not configured.");
+            return baseMessage;
+        }
+
+        private static string? ExtractLatestUserSnippet(List<ChatMessage>? conversationHistory)
+        {
+            if (conversationHistory == null || conversationHistory.Count == 0)
+            {
+                return null;
+            }
+
+            for (int i = conversationHistory.Count - 1; i >= 0; i--)
+            {
+                var message = conversationHistory[i];
+                if (!string.Equals(message.Role, "user", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(message.Content))
+                {
+                    continue;
+                }
+
+                var sanitized = Regex.Replace(message.Content, "\\s+", " ").Trim();
+                if (sanitized.Length > 160)
+                {
+                    sanitized = sanitized.Substring(0, 160).Trim() + "…";
+                }
+
+                sanitized = sanitized.Replace("\"", "'");
+                return sanitized;
+            }
+
+            return null;
         }
     }
 }
