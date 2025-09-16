@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -98,7 +99,6 @@ Wrap-up:
             if (string.IsNullOrEmpty(_apiKey))
             {
                 _logger.LogError("OpenAI API key is not configured!");
-                throw new InvalidOperationException("OpenAI API key is not configured");
             }
 
             _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ??
@@ -118,8 +118,11 @@ Wrap-up:
                 : "(not set)";
             _logger.LogInformation($"ChatService initialized with model: {_model}, API key: {maskedKey}");
 
-            // Configure HttpClient
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            // Configure HttpClient if an API key is available
+            if (!string.IsNullOrWhiteSpace(_apiKey))
+            {
+                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+            }
         }
 
         // dotnet-server/_Services/ChatService.cs
@@ -131,6 +134,7 @@ Wrap-up:
 
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
+            EnsureApiKeyConfigured();
             var url = "https://api.openai.com/v1/chat/completions";
 
             if (conversationHistory == null)
@@ -153,7 +157,7 @@ Wrap-up:
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             // Send the request to OpenAI.
@@ -239,6 +243,7 @@ Wrap-up:
 
         public async Task<string> GetChatResponseWithImageAsync(List<ChatMessage> conversationHistory)
         {
+            EnsureApiKeyConfigured();
             var url = "https://api.openai.com/v1/chat/completions";
 
             if (conversationHistory == null)
@@ -309,7 +314,7 @@ Wrap-up:
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Add("Authorization", $"Bearer {_apiKey}");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
             // Send the request to OpenAI.
@@ -338,6 +343,14 @@ Wrap-up:
             }
 
             return chatResponse;
+        }
+
+        private void EnsureApiKeyConfigured()
+        {
+            if (string.IsNullOrWhiteSpace(_apiKey))
+            {
+                throw new InvalidOperationException("OpenAI API key is not configured. Set the OPENAI_API_KEY environment variable or provide OpenAI:ApiKey in configuration.");
+            }
         }
     }
 }
