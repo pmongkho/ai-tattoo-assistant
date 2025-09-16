@@ -1,4 +1,8 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "dist/angular-client/browser"
+  "outputDirectory": "dist/angular-client/browser",
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/.*", "dest": "/index.html" }
+  ]
 }
