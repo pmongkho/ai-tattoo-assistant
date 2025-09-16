@@ -1,4 +1,5 @@
 // DotNet/Services/ConsultationService.cs
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using DotNet.Data;
@@ -209,7 +210,7 @@ namespace DotNet.Services
                 };
 
                 _context.Consultations.Add(c);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(c, "start consultation", chatMessageCount: 0);
                 return c.Id;
             }
             catch (Exception ex)
@@ -245,7 +246,14 @@ namespace DotNet.Services
                 };
 
                 _context.Consultations.Add(c);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    c,
+                    "start external consultation",
+                    chatMessageCount: 0,
+                    additionalData: new Dictionary<string, object?>
+                    {
+                        ["ClientProfileId"] = clientProfile.Id
+                    });
                 return c.Id;
             }
             catch (Exception ex)
@@ -291,11 +299,17 @@ namespace DotNet.Services
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateStatusIfComplete(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "chat turn persistence",
+                    chatHistory.Count);
 
                 // Try auto-submit when we have availability + contact
                 await AutoSubmitIfReadyAsync(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "auto-submit attempt after chat turn",
+                    chatHistory.Count);
 
                 return aiResponse;
             }
@@ -329,10 +343,16 @@ namespace DotNet.Services
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateStatusIfComplete(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "external chat turn persistence",
+                    chatHistory.Count);
 
                 await AutoSubmitIfReadyAsync(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "auto-submit attempt after external chat turn",
+                    chatHistory.Count);
 
                 return aiResponse;
             }
@@ -396,10 +416,23 @@ namespace DotNet.Services
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateStatusIfComplete(consultation);
-                await _context.SaveChangesAsync();
+                var imageContext = new Dictionary<string, object?>
+                {
+                    ["ImageUploadedThisTurn"] = imageUrl != null
+                };
+
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "chat turn persistence with image",
+                    chatHistory.Count,
+                    imageContext);
 
                 await AutoSubmitIfReadyAsync(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "auto-submit attempt after image chat turn",
+                    chatHistory.Count,
+                    imageContext);
 
                 return aiResponse;
             }
@@ -445,10 +478,23 @@ namespace DotNet.Services
                 consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
 
                 UpdateStatusIfComplete(consultation);
-                await _context.SaveChangesAsync();
+                var imageContext = new Dictionary<string, object?>
+                {
+                    ["ImageUploadedThisTurn"] = imageUrl != null
+                };
+
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "external chat turn persistence with image",
+                    chatHistory.Count,
+                    imageContext);
 
                 await AutoSubmitIfReadyAsync(consultation);
-                await _context.SaveChangesAsync();
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    "auto-submit attempt after external image chat turn",
+                    chatHistory.Count,
+                    imageContext);
 
                 return aiResponse;
             }
@@ -699,7 +745,14 @@ namespace DotNet.Services
                     throw new ArgumentException("Invalid status value");
 
                 consultation.Status = status;
-                await _context.SaveChangesAsync();
+                var operationDescription = $"status update to {status}";
+                await SaveConsultationWithLoggingAsync(
+                    consultation,
+                    operationDescription,
+                    additionalData: new Dictionary<string, object?>
+                    {
+                        ["StatusRequested"] = status
+                    });
                 return true;
             }
             catch (Exception ex)
@@ -859,7 +912,14 @@ namespace DotNet.Services
             c.SquareAppointmentId = apptId ?? "";
             c.Status = string.IsNullOrEmpty(apptId) ? "awaiting-review" : "submitted-to-square";
 
-            await _context.SaveChangesAsync();
+            await SaveConsultationWithLoggingAsync(
+                c,
+                "manual submission to Square",
+                additionalData: new Dictionary<string, object?>
+                {
+                    ["SubmittedToSquare"] = true,
+                    ["AppointmentCreated"] = !string.IsNullOrWhiteSpace(apptId)
+                });
             return apptId;
         }
 
@@ -874,6 +934,10 @@ namespace DotNet.Services
             if (!IsReadyToSubmit(c)) return;
             try
             {
+                _logger.LogInformation(
+                    "Consultation {ConsultationId}: attempting auto-submit to Square",
+                    c.Id);
+
                 var (customerId, appointmentId) = await _squareAppointmentsService.CreateAppointmentAsync(
                     c.ContactFullName,
                     c.ContactPhone,
@@ -885,12 +949,21 @@ namespace DotNet.Services
                     c.ImageUrl
                 );
 
-                if (!string.IsNullOrWhiteSpace(customerId))
+                var linkedCustomer = !string.IsNullOrWhiteSpace(customerId);
+                var createdAppointment = !string.IsNullOrWhiteSpace(appointmentId);
+
+                if (linkedCustomer)
                 {
                     c.SquareCustomerId = customerId;
                     c.SquareAppointmentId = appointmentId ?? "";
                     c.Status = string.IsNullOrWhiteSpace(appointmentId) ? "awaiting-review" : "submitted-to-square";
                 }
+
+                _logger.LogInformation(
+                    "Consultation {ConsultationId}: auto-submit finished. LinkedCustomer={LinkedCustomer}, AppointmentCreated={AppointmentCreated}",
+                    c.Id,
+                    linkedCustomer,
+                    createdAppointment);
             }
             catch (Exception ex)
             {
@@ -907,6 +980,105 @@ namespace DotNet.Services
 
             if (!LooksLikePhone(c.ContactPhone) && LooksLikePhone(phoneRaw))
                 c.ContactPhone = NormalizePhone(phoneRaw);
+        }
+
+        private async Task<int> SaveConsultationWithLoggingAsync(
+            Consultation consultation,
+            string operationDescription,
+            int? chatMessageCount = null,
+            IReadOnlyDictionary<string, object?>? additionalData = null)
+        {
+            try
+            {
+                var affected = await _context.SaveChangesAsync();
+
+                var resolvedCount = chatMessageCount;
+                if (!resolvedCount.HasValue)
+                {
+                    if (string.IsNullOrWhiteSpace(consultation.ChatHistory))
+                    {
+                        resolvedCount = 0;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            var parsedHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory);
+                            resolvedCount = parsedHistory?.Count;
+                        }
+                        catch (JsonException jsonEx)
+                        {
+                            _logger.LogWarning(
+                                jsonEx,
+                                "Consultation {ConsultationId}: Failed to parse chat history while logging after {Operation}",
+                                consultation.Id,
+                                operationDescription);
+                        }
+                    }
+                }
+
+                var snapshot = new Dictionary<string, object?>
+                {
+                    ["Status"] = consultation.Status,
+                    ["Style"] = consultation.Style,
+                    ["Placement"] = consultation.BodyPart,
+                    ["Size"] = consultation.Size,
+                    ["Budget"] = consultation.PriceExpectation,
+                    ["Availability"] = consultation.Availability,
+                    ["HasContactName"] = !string.IsNullOrWhiteSpace(consultation.ContactFullName),
+                    ["HasContactPhone"] = !string.IsNullOrWhiteSpace(consultation.ContactPhone),
+                    ["HasImage"] = !string.IsNullOrWhiteSpace(consultation.ImageUrl),
+                    ["HasSquareCustomer"] = !string.IsNullOrWhiteSpace(consultation.SquareCustomerId),
+                    ["HasSquareAppointment"] = !string.IsNullOrWhiteSpace(consultation.SquareAppointmentId),
+                    ["ChatMessages"] = resolvedCount
+                };
+
+                if (additionalData != null)
+                {
+                    foreach (var kvp in additionalData)
+                    {
+                        snapshot[kvp.Key] = kvp.Value;
+                    }
+                }
+
+                if (affected == 0)
+                {
+                    _logger.LogWarning(
+                        "Consultation {ConsultationId}: SaveChangesAsync returned 0 rows after {Operation}. Snapshot: {@Snapshot}",
+                        consultation.Id,
+                        operationDescription,
+                        snapshot);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "Consultation {ConsultationId}: persisted {Changes} change(s) for {Operation}. Snapshot: {@Snapshot}",
+                        consultation.Id,
+                        affected,
+                        operationDescription,
+                        snapshot);
+                }
+
+                return affected;
+            }
+            catch (DbUpdateException dbEx)
+            {
+                _logger.LogError(
+                    dbEx,
+                    "Consultation {ConsultationId}: database update failed during {Operation}",
+                    consultation.Id,
+                    operationDescription);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Consultation {ConsultationId}: unexpected error during {Operation}",
+                    consultation.Id,
+                    operationDescription);
+                throw;
+            }
         }
 
         // ConsultationService.cs
