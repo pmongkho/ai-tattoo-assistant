@@ -292,7 +292,8 @@ public static class ProgramExtensions
 
         if (allowedOrigins.Length == 0)
         {
-            allowedOrigins = new[] { "http://localhost:4200" };
+            allowedOrigins = new[] { "http://localhost:4200",
+                "https://ai-tattoo-assistant.vercel.app" };
         }
 
         services.AddCors(options =>
