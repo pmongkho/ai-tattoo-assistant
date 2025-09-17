@@ -73,11 +73,16 @@ namespace DotNet.Controllers
         [AllowAnonymous] // ✨ allow public chat start
         public async Task<IActionResult> SendMessageWithImage(
             Guid id,
-            [FromForm] string message,
-            [FromForm] IFormFile image)
+            [FromForm] string? message,
+            [FromForm] IFormFile? image)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(message) && image == null)
+                {
+                    return BadRequest(new { error = "A message or an image must be provided." });
+                }
+
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
                 var response = await _consultationService.SendMessageWithImageAsync(id, userId, message, image);
                 return Ok(new { response });
@@ -163,12 +168,16 @@ namespace DotNet.Controllers
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                var appointmentId = await _consultationService.SubmitToSquareAsync(id, userId);
-                return Ok(new { appointmentId });
+                var result = await _consultationService.SubmitToSquareAsync(id, userId);
+                return Ok(result);
             }
             catch (KeyNotFoundException ex)
             {
                 return NotFound(ex.Message);
+            }
+            catch (ConsultationSubmissionException ex)
+            {
+                return BadRequest(new { error = ex.Message, missingFields = ex.MissingFields });
             }
             catch (InvalidOperationException ex)
             {
@@ -178,7 +187,7 @@ namespace DotNet.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error submitting consultation to Square");
-                return StatusCode(500, "Error submitting consultation to Square");
+                return StatusCode(500, new { error = "Error submitting consultation to Square", detail = ex.Message });
             }
         }
         
