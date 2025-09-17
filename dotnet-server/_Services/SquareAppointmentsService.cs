@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Square;
@@ -37,7 +38,7 @@ namespace DotNet.Services
 
         }
 
-        public async Task<(string customerId, string? appointmentId)> CreateAppointmentAsync(
+        public async Task<SquareAppointmentResult> CreateAppointmentAsync(
             string fullName,
             string phoneE164,
             string availabilityNote,
@@ -52,21 +53,23 @@ namespace DotNet.Services
 
             if (!Regex.IsMatch(_opts.LocationId ?? string.Empty, @"^[A-Z0-9]{10}$"))
             {
-                _logger.LogWarning(
-                    "Invalid or missing LocationId configured; returning customer id without booking.");
-                return (customerId, null);
+                var reason = "Square LocationId configuration is missing or invalid; skipping booking creation.";
+                _logger.LogWarning(reason);
+                return new SquareAppointmentResult(customerId, null, reason, false);
             }
 
             if (string.IsNullOrWhiteSpace(_opts.ServiceVariationId))
             {
-                _logger.LogInformation("No ServiceVariationId configured; returning customer id without booking.");
-                return (customerId, null);
+                var reason = "Square ServiceVariationId is not configured; skipping booking creation.";
+                _logger.LogInformation(reason);
+                return new SquareAppointmentResult(customerId, null, reason, false);
             }
 
             if (string.IsNullOrWhiteSpace(_opts.TeamMemberId))
             {
-                _logger.LogInformation("No TeamMemberId configured; returning customer id without booking.");
-                return (customerId, null);
+                var reason = "Square TeamMemberId is not configured; skipping booking creation.";
+                _logger.LogInformation(reason);
+                return new SquareAppointmentResult(customerId, null, reason, false);
             }
 
             try
@@ -110,8 +113,9 @@ namespace DotNet.Services
                 var slot = searchResp.Availabilities?.FirstOrDefault();
                 if (slot == null)
                 {
-                    _logger.LogWarning("No availability slots returned by Square. Returning customer only.");
-                    return (customerId, null);
+                    var reason = "Square returned no availability slots for the requested window.";
+                    _logger.LogWarning(reason);
+                    return new SquareAppointmentResult(customerId, null, reason, true);
                 }
 
                 var createReq = new CreateBookingRequest
@@ -141,23 +145,49 @@ namespace DotNet.Services
 
                 if (string.IsNullOrWhiteSpace(apptId))
                 {
-                    _logger.LogWarning("Square returned no booking id. Returning customer only.");
-                    return (customerId, null);
+                    var reason = "Square returned no booking id after creation.";
+                    _logger.LogWarning(reason);
+                    return new SquareAppointmentResult(customerId, null, reason, true);
                 }
 
                 _logger.LogInformation("Created Square booking {BookingId} for customer {CustomerId}", apptId, customerId);
-                return (customerId, apptId);
+                return new SquareAppointmentResult(customerId, apptId, null, true);
             }
             catch (SquareApiException ex)
             {
+                var reason = BuildSquareApiErrorMessage(ex);
                 _logger.LogError(ex, "Square API error while creating booking");
-                return (customerId, null);
+                return new SquareAppointmentResult(customerId, null, reason, true);
             }
             catch (Exception ex)
             {
+                var reason = "Unexpected error while creating Square booking: " + ex.Message;
                 _logger.LogError(ex, "Unexpected error while creating booking");
-                return (customerId, null);
+                return new SquareAppointmentResult(customerId, null, reason, true);
             }
+        }
+
+        private static string BuildSquareApiErrorMessage(SquareApiException ex)
+        {
+            if (ex?.Errors != null && ex.Errors.Count > 0)
+            {
+                var details = ex.Errors
+                    .Select(err => string.Join(" ", new[]
+                    {
+                        err.Category?.ToString(),
+                        err.Code?.ToString(),
+                        err.Detail
+                    }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())))
+                    .Where(msg => !string.IsNullOrWhiteSpace(msg))
+                    .ToArray();
+
+                if (details.Length > 0)
+                {
+                    return "Square API error: " + string.Join("; ", details);
+                }
+            }
+
+            return "Square API error: " + ex?.Message;
         }
 
         private async Task<string> UpsertCustomerAsync(string fullName, string phoneE164, string note)

@@ -1,6 +1,16 @@
+using System.Threading.Tasks;
+
+namespace DotNet.Services;
+
+public record SquareAppointmentResult(
+    string CustomerId,
+    string? AppointmentId,
+    string? FailureReason,
+    bool BookingAttempted);
+
 public interface ISquareAppointmentsService
 {
-    Task<(string customerId, string? appointmentId)> CreateAppointmentAsync(
+    Task<SquareAppointmentResult> CreateAppointmentAsync(
         string fullName,
         string phoneE164,
         string availabilityNote,

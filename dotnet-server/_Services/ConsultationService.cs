@@ -66,7 +66,10 @@ namespace DotNet.Services
         {
             if (string.IsNullOrWhiteSpace(s)) return false;
             var digits = new string(s.Where(char.IsDigit).ToArray());
-            return digits.Length >= 10; // loose: US-style minimum
+
+            // Accept E.164-style numbers: minimum 8 digits (e.g., some EU numbers)
+            // and a reasonable maximum of 15 digits as per ITU spec.
+            return digits.Length is >= 8 and <= 15;
         }
 
         private static bool LooksLikeAvailability(string s)
@@ -404,8 +407,8 @@ namespace DotNet.Services
             }
         }
 
-        public async Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string message,
-            IFormFile image)
+        public async Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string? message,
+            IFormFile? image)
         {
             try
             {
@@ -426,16 +429,32 @@ namespace DotNet.Services
                 {
                     imageUrl = await _storageService.UploadFileAsync(image);
 
-                    _context.UserImages.Add(new UserImage
+                    if (!string.IsNullOrWhiteSpace(userId))
                     {
-                        UserId = userId,
-                        ImageUrl = imageUrl,
-                        ImageType = "Reference",
-                        Description = message ?? "Consultation reference image",
-                        OriginalFileName = image.FileName,
-                        FileSize = image.Length,
-                        ContentType = image.ContentType
-                    });
+                        _context.UserImages.Add(new UserImage
+                        {
+                            UserId = userId,
+                            ImageUrl = imageUrl,
+                            ImageType = "Reference",
+                            Description = message ?? "Consultation reference image",
+                            OriginalFileName = image.FileName,
+                            FileSize = image.Length,
+                            ContentType = image.ContentType
+                        });
+                    }
+                    else if (consultation.ClientId is { Length: > 0 } ownerId)
+                    {
+                        _context.UserImages.Add(new UserImage
+                        {
+                            UserId = ownerId,
+                            ImageUrl = imageUrl,
+                            ImageType = "Reference",
+                            Description = message ?? "Consultation reference image",
+                            OriginalFileName = image.FileName,
+                            FileSize = image.Length,
+                            ContentType = image.ContentType
+                        });
+                    }
 
                     consultation.ImageUrl = imageUrl;
                 }
@@ -940,7 +959,7 @@ namespace DotNet.Services
             }
         }
 
-        public async Task<string> SubmitToSquareAsync(Guid consultationId, string userId)
+        public async Task<SquareSubmissionResult> SubmitToSquareAsync(Guid consultationId, string userId)
         {
             var c = await _context.Consultations
                         .FirstOrDefaultAsync(x =>
@@ -967,15 +986,14 @@ namespace DotNet.Services
             if (!LooksLikePhone(phoneRaw)) missing.Add("phone");
 
             if (missing.Count > 0)
-                throw new InvalidOperationException($"Missing required info: {string.Join(", ", missing)}");
+                throw new ConsultationSubmissionException(missing);
 
             var phone = NormalizePhone(phoneRaw);
 
-            string customerId;
-            string? apptId;
+            SquareAppointmentResult bookingResult;
             try
             {
-                (customerId, apptId) = await _squareAppointmentsService.CreateAppointmentAsync(
+                bookingResult = await _squareAppointmentsService.CreateAppointmentAsync(
                     fullName: name,
                     phoneE164: phone,
                     availabilityNote: c.Availability,
@@ -1000,12 +1018,14 @@ namespace DotNet.Services
                 throw;
             }
 
-            c.SquareCustomerId = customerId;
-            c.SquareAppointmentId = apptId ?? "";
-            c.Status = string.IsNullOrEmpty(apptId) ? "awaiting-review" : "submitted-to-square";
-            c.SquareSyncError = string.IsNullOrWhiteSpace(apptId)
-                ? "Square booking not created automatically. Please review availability."
-                : string.Empty;
+            c.SquareCustomerId = bookingResult.CustomerId;
+            var appointmentId = bookingResult.AppointmentId ?? string.Empty;
+            var appointmentCreated = !string.IsNullOrWhiteSpace(appointmentId);
+            c.SquareAppointmentId = appointmentId;
+            c.Status = appointmentCreated ? "submitted-to-square" : "awaiting-review";
+            c.SquareSyncError = appointmentCreated
+                ? string.Empty
+                : bookingResult.FailureReason ?? "Square booking not created automatically. Please review availability.";
 
             await SaveConsultationWithLoggingAsync(
                 c,
@@ -1013,9 +1033,16 @@ namespace DotNet.Services
                 additionalData: new Dictionary<string, object?>
                 {
                     ["SubmittedToSquare"] = true,
-                    ["AppointmentCreated"] = !string.IsNullOrWhiteSpace(apptId)
+                    ["AppointmentCreated"] = appointmentCreated,
+                    ["SquareFailureReason"] = bookingResult.FailureReason,
+                    ["BookingAttempted"] = bookingResult.BookingAttempted
                 });
-            return apptId;
+            return new SquareSubmissionResult(
+                AppointmentId: appointmentCreated ? appointmentId : null,
+                SquareCustomerId: string.IsNullOrWhiteSpace(c.SquareCustomerId) ? null : c.SquareCustomerId,
+                AppointmentCreated: appointmentCreated,
+                Status: c.Status,
+                SquareSyncError: string.IsNullOrWhiteSpace(c.SquareSyncError) ? null : c.SquareSyncError);
         }
 
         private bool IsReadyToSubmit(Consultation c) =>
@@ -1033,7 +1060,7 @@ namespace DotNet.Services
                     "Consultation {ConsultationId}: attempting auto-submit to Square",
                     c.Id);
 
-                var (customerId, appointmentId) = await _squareAppointmentsService.CreateAppointmentAsync(
+                var bookingResult = await _squareAppointmentsService.CreateAppointmentAsync(
                     c.ContactFullName,
                     c.ContactPhone,
                     c.Availability,
@@ -1044,28 +1071,29 @@ namespace DotNet.Services
                     c.ImageUrl
                 );
 
-                var linkedCustomer = !string.IsNullOrWhiteSpace(customerId);
-                var createdAppointment = !string.IsNullOrWhiteSpace(appointmentId);
+                var linkedCustomer = !string.IsNullOrWhiteSpace(bookingResult.CustomerId);
+                var createdAppointment = !string.IsNullOrWhiteSpace(bookingResult.AppointmentId);
 
                 if (linkedCustomer)
                 {
-                    c.SquareCustomerId = customerId;
-                    c.SquareAppointmentId = appointmentId ?? "";
-                    c.Status = string.IsNullOrWhiteSpace(appointmentId) ? "awaiting-review" : "submitted-to-square";
-                    c.SquareSyncError = string.IsNullOrWhiteSpace(appointmentId)
-                        ? "Square booking not created automatically. Please review availability."
-                        : string.Empty;
+                    c.SquareCustomerId = bookingResult.CustomerId;
+                    c.SquareAppointmentId = bookingResult.AppointmentId ?? string.Empty;
+                    c.Status = createdAppointment ? "submitted-to-square" : "awaiting-review";
+                    c.SquareSyncError = createdAppointment
+                        ? string.Empty
+                        : bookingResult.FailureReason ?? "Square booking not created automatically. Please review availability.";
                 }
                 else
                 {
-                    c.SquareSyncError = "Failed to link customer in Square.";
+                    c.SquareSyncError = bookingResult.FailureReason ?? "Failed to link customer in Square.";
                 }
 
                 _logger.LogInformation(
-                    "Consultation {ConsultationId}: auto-submit finished. LinkedCustomer={LinkedCustomer}, AppointmentCreated={AppointmentCreated}",
+                    "Consultation {ConsultationId}: auto-submit finished. LinkedCustomer={LinkedCustomer}, AppointmentCreated={AppointmentCreated}, FailureReason={FailureReason}",
                     c.Id,
                     linkedCustomer,
-                    createdAppointment);
+                    createdAppointment,
+                    bookingResult.FailureReason);
             }
             catch (Exception ex)
             {
