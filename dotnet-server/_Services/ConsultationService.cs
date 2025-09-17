@@ -404,8 +404,8 @@ namespace DotNet.Services
             }
         }
 
-        public async Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string message,
-            IFormFile image)
+        public async Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string? message,
+            IFormFile? image)
         {
             try
             {
@@ -426,16 +426,32 @@ namespace DotNet.Services
                 {
                     imageUrl = await _storageService.UploadFileAsync(image);
 
-                    _context.UserImages.Add(new UserImage
+                    if (!string.IsNullOrWhiteSpace(userId))
                     {
-                        UserId = userId,
-                        ImageUrl = imageUrl,
-                        ImageType = "Reference",
-                        Description = message ?? "Consultation reference image",
-                        OriginalFileName = image.FileName,
-                        FileSize = image.Length,
-                        ContentType = image.ContentType
-                    });
+                        _context.UserImages.Add(new UserImage
+                        {
+                            UserId = userId,
+                            ImageUrl = imageUrl,
+                            ImageType = "Reference",
+                            Description = message ?? "Consultation reference image",
+                            OriginalFileName = image.FileName,
+                            FileSize = image.Length,
+                            ContentType = image.ContentType
+                        });
+                    }
+                    else if (consultation.ClientId is { Length: > 0 } ownerId)
+                    {
+                        _context.UserImages.Add(new UserImage
+                        {
+                            UserId = ownerId,
+                            ImageUrl = imageUrl,
+                            ImageType = "Reference",
+                            Description = message ?? "Consultation reference image",
+                            OriginalFileName = image.FileName,
+                            FileSize = image.Length,
+                            ContentType = image.ContentType
+                        });
+                    }
 
                     consultation.ImageUrl = imageUrl;
                 }

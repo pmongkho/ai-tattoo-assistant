@@ -73,11 +73,16 @@ namespace DotNet.Controllers
         [AllowAnonymous] // ✨ allow public chat start
         public async Task<IActionResult> SendMessageWithImage(
             Guid id,
-            [FromForm] string message,
-            [FromForm] IFormFile image)
+            [FromForm] string? message,
+            [FromForm] IFormFile? image)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(message) && image == null)
+                {
+                    return BadRequest(new { error = "A message or an image must be provided." });
+                }
+
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
                 var response = await _consultationService.SendMessageWithImageAsync(id, userId, message, image);
                 return Ok(new { response });

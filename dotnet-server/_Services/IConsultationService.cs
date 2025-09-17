@@ -12,7 +12,7 @@ namespace DotNet.Services
         Task<Guid> StartExternalConsultationAsync(Guid clientProfileId, string artistId, string? squareArtistId);
         Task<string> SendMessageAsync(Guid consultationId, string userId, string message);
         Task<string> SendExternalMessageAsync(Guid consultationId, Guid clientProfileId, string message);
-        Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string message, IFormFile image);
+        Task<string> SendMessageWithImageAsync(Guid consultationId, string userId, string? message, IFormFile? image);
         Task<string> SendExternalMessageWithImageAsync(Guid consultationId, Guid clientProfileId, string message, IFormFile image);
         Task<ConsultationDto> GetConsultationAsync(Guid consultationId, string userId);
         Task<ConsultationDto> GetExternalConsultationAsync(Guid consultationId, Guid clientProfileId);
