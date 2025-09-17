@@ -1,10 +1,14 @@
 using System;
+using DotNet.Data;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace DotNet.Migrations
+namespace dotnet_server.Migrations
 {
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20251001000000_ConsultationMessagesRefactor")]
     public partial class ConsultationMessagesRefactor : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
