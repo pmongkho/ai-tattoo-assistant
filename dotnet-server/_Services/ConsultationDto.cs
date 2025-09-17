@@ -26,6 +26,8 @@ namespace DotNet.Services
         public string? Size { get; set; }
         public string? PriceExpectation { get; set; }
         public string? Availability { get; set; }
+        public string? CurrentStep { get; set; }
+        public string? SquareSyncError { get; set; }
 
         // Chat history with system messages filtered out
         public List<ChatMessageDto> ChatHistory { get; set; } = new();

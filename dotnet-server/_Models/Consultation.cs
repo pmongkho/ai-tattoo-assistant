@@ -43,12 +43,20 @@ namespace DotNet.Models
 
         public virtual List<Appointment> Appointments { get; set; } = new List<Appointment>();
 
-        // Chat JSON
-        public string ChatHistory { get; set; } = string.Empty;
+        /// <summary>
+        /// Tracks the wizard step the assistant should ask about next.
+        /// </summary>
+        public string CurrentStep { get; set; } = "subject";
+
+        /// <summary>
+        /// Ordered chat transcript stored as individual rows instead of a JSON blob.
+        /// </summary>
+        public virtual ICollection<ConsultationMessage> Messages { get; set; } = new List<ConsultationMessage>();
 
         // Square linkage ONLY (no PII persisted)
         public string SquareCustomerId { get; set; } = string.Empty;
         public string SquareAppointmentId { get; set; } = string.Empty;
+        public string SquareSyncError { get; set; } = string.Empty;
         public string ContactFullName { get; set; } = string.Empty;
         public string ContactPhone { get; set; } = string.Empty;
 

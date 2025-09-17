@@ -15,6 +15,7 @@ namespace DotNet.Data
         
         public DbSet<ArtistProfile> ArtistProfiles { get; set; }
         public DbSet<Consultation> Consultations { get; set; }
+        public DbSet<ConsultationMessage> ConsultationMessages { get; set; }
         public DbSet<TattooJob> TattooJobs { get; set; }
         public DbSet<Appointment> Appointments { get; set; }
         public DbSet<UserImage> UserImages { get; set; }
@@ -64,6 +65,16 @@ namespace DotNet.Data
                 .WithMany(u => u.ArtistConsultations)
                 .HasForeignKey(c => c.ArtistId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ConsultationMessage>()
+                .HasOne(cm => cm.Consultation)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(cm => cm.ConsultationId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ConsultationMessage>()
+                .HasIndex(cm => new { cm.ConsultationId, cm.OrderIndex })
+                .IsUnique();
                 
             // TattooJob relationships
             builder.Entity<TattooJob>()

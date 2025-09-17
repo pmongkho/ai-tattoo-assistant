@@ -16,5 +16,10 @@ namespace DotNet.Models
         public string? Email { get; set; }
 
         public string? PhoneNumber { get; set; }
+
+        /// <summary>
+        /// External messaging handle (Instagram username, FB ID, etc.).
+        /// </summary>
+        public string? ExternalHandle { get; set; }
     }
 }

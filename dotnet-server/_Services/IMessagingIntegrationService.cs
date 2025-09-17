@@ -1,9 +1,10 @@
 using System.Threading.Tasks;
+using DotNet.Models;
 
 namespace DotNet.Services
 {
     public interface IMessagingIntegrationService
     {
-        Task ProcessIncomingMessageAsync(string platform, string artistId, string senderHandle, string message);
+        Task<string> ProcessIncomingMessageAsync(string platform, Tenant tenant, string senderHandle, string message);
     }
 }
