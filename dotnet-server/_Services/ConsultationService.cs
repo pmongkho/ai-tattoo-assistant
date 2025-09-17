@@ -1,6 +1,6 @@
 // DotNet/Services/ConsultationService.cs
 using System.Collections.Generic;
-using System.Text.Json;
+using System.Linq;
 using System.Text.RegularExpressions;
 using DotNet.Data;
 using DotNet.Models;
@@ -40,35 +40,19 @@ namespace DotNet.Services
 
 
 
-        private static bool ChatHasSubject(string? chatJson)
+        private static bool ChatHasSubject(IEnumerable<ChatMessage> chatHistory)
         {
-            if (string.IsNullOrWhiteSpace(chatJson)) return false;
-            try
-            {
-                var msgs = JsonSerializer.Deserialize<List<ChatMessage>>(chatJson) ?? new();
-                return msgs.Any(m => m.Role == "user" && Regex.IsMatch(m.Content ?? "",
-                    @"(portrait|animal|flower|skull|script|lettering|abstract|lion|tiger|rose|name|quote|butterfly|dragon)",
-                    RegexOptions.IgnoreCase));
-            }
-            catch
-            {
-                return false;
-            }
+            if (chatHistory == null) return false;
+            return chatHistory.Any(m => m.Role == "user" && Regex.IsMatch(m.Content ?? string.Empty,
+                @"(portrait|animal|flower|skull|script|lettering|abstract|lion|tiger|rose|name|quote|butterfly|dragon)",
+                RegexOptions.IgnoreCase));
         }
 
-        private static bool UserDeclinedImage(Consultation c)
+        private static bool UserDeclinedImage(IEnumerable<ChatMessage> chatHistory)
         {
-            if (string.IsNullOrWhiteSpace(c.ChatHistory)) return false;
-            try
-            {
-                var msgs = JsonSerializer.Deserialize<List<ChatMessage>>(c.ChatHistory) ?? new();
-                return msgs.Any(m => m.Role == "user" &&
-                    Regex.IsMatch(m.Content ?? "", @"\b(no|none|nope)\b", RegexOptions.IgnoreCase));
-            }
-            catch
-            {
-                return false;
-            }
+            if (chatHistory == null) return false;
+            return chatHistory.Any(m => m.Role == "user" &&
+                Regex.IsMatch(m.Content ?? string.Empty, @"\b(no|none|nope)\b", RegexOptions.IgnoreCase));
         }
 
         private static bool LooksLikeFullName(string s)
@@ -97,22 +81,13 @@ namespace DotNet.Services
         }
 
 
-        private static (string fullName, string phone) ExtractContactFromChat(string? chatJson)
+        private static (string fullName, string phone) ExtractContactFromChat(IEnumerable<ChatMessage> messages)
         {
-            if (string.IsNullOrWhiteSpace(chatJson)) return ("", "");
-            List<ChatMessage> msgs;
-            try
-            {
-                msgs = JsonSerializer.Deserialize<List<ChatMessage>>(chatJson) ?? new();
-            }
-            catch
-            {
-                return ("", "");
-            }
+            if (messages == null) return ("", "");
 
             string name = null, phone = null;
 
-            foreach (var m in msgs.Where(m => m.Role == "user"))
+            foreach (var m in messages.Where(m => m.Role == "user"))
             {
                 var text = m.Content ?? string.Empty;
 
@@ -159,18 +134,20 @@ namespace DotNet.Services
         private static string ToTitle(string s) =>
             Regex.Replace((s ?? "").ToLowerInvariant(), @"\b\w", m => m.Value.ToUpperInvariant());
 
-        private void UpdateStatusIfComplete(Consultation c)
+        private void UpdateStatusIfComplete(Consultation c, IReadOnlyList<ChatMessage> chatHistory)
         {
-            bool hasSubjectOrImage = !string.IsNullOrWhiteSpace(c.ImageUrl) || ChatHasSubject(c.ChatHistory);
+            bool hasSubjectOrImage = !string.IsNullOrWhiteSpace(c.ImageUrl) || ChatHasSubject(chatHistory);
             bool hasStyle = !string.IsNullOrWhiteSpace(c.Style);
             bool hasBody = !string.IsNullOrWhiteSpace(c.BodyPart);
             bool hasSize = !string.IsNullOrWhiteSpace(c.Size);
             bool hasBudget = !string.IsNullOrWhiteSpace(c.PriceExpectation);
             bool hasAvailability = LooksLikeAvailability(c.Availability);
 
-            var (name, phone) = ExtractContactFromChat(c.ChatHistory);
+            var (name, phone) = ExtractContactFromChat(chatHistory);
             bool hasName = LooksLikeFullName(!string.IsNullOrWhiteSpace(c.ContactFullName) ? c.ContactFullName : name);
             bool hasPhone = LooksLikePhone(!string.IsNullOrWhiteSpace(c.ContactPhone) ? c.ContactPhone : phone);
+
+            c.CurrentStep = DetermineCurrentStep(c, chatHistory);
 
             if (hasSubjectOrImage && hasStyle && hasBody && hasSize && hasBudget && hasAvailability && hasName &&
                 hasPhone)
@@ -178,6 +155,75 @@ namespace DotNet.Services
                 if (string.IsNullOrEmpty(c.Status) || c.Status is "draft" or "pending")
                     c.Status = "awaiting-review";
             }
+        }
+
+        private string DetermineCurrentStep(Consultation c, IReadOnlyList<ChatMessage> chatHistory)
+        {
+            if (!ChatHasSubject(chatHistory) && string.IsNullOrWhiteSpace(c.ImageUrl))
+                return "subject";
+            if (string.IsNullOrWhiteSpace(c.Style))
+                return "style";
+            if (string.IsNullOrWhiteSpace(c.BodyPart))
+                return "placement";
+            if (string.IsNullOrWhiteSpace(c.Size))
+                return "size";
+            if (string.IsNullOrWhiteSpace(c.ImageUrl) && !UserDeclinedImage(chatHistory))
+                return "references";
+            if (string.IsNullOrWhiteSpace(c.PriceExpectation))
+                return "budget";
+            if (!LooksLikeAvailability(c.Availability))
+                return "availability";
+            if (!LooksLikeFullName(c.ContactFullName))
+                return "contact-name";
+            if (!LooksLikePhone(c.ContactPhone))
+                return "contact-phone";
+            return "ready";
+        }
+
+        private async Task<List<ConsultationMessage>> LoadConsultationMessagesAsync(Guid consultationId)
+        {
+            return await _context.ConsultationMessages
+                .Where(m => m.ConsultationId == consultationId)
+                .OrderBy(m => m.OrderIndex)
+                .ToListAsync();
+        }
+
+        private async Task<Dictionary<Guid, List<ConsultationMessage>>> LoadMessagesForConsultationsAsync(IEnumerable<Guid> consultationIds)
+        {
+            var idList = consultationIds.ToList();
+            if (idList.Count == 0)
+            {
+                return new Dictionary<Guid, List<ConsultationMessage>>();
+            }
+
+            return await _context.ConsultationMessages
+                .Where(m => idList.Contains(m.ConsultationId))
+                .OrderBy(m => m.OrderIndex)
+                .GroupBy(m => m.ConsultationId)
+                .ToDictionaryAsync(g => g.Key, g => g.ToList());
+        }
+
+        private static List<ChatMessage> ToChatMessages(IEnumerable<ConsultationMessage> messages)
+        {
+            return messages
+                .Select(m => new ChatMessage(m.Role, m.Content, m.ImageUrl))
+                .ToList();
+        }
+
+        private void AppendChatMessage(Guid consultationId, List<ChatMessage> chatHistory, ref int nextOrderIndex, string role, string? content, string? imageUrl = null)
+        {
+            var normalizedContent = content ?? string.Empty;
+            _context.ConsultationMessages.Add(new ConsultationMessage
+            {
+                ConsultationId = consultationId,
+                OrderIndex = nextOrderIndex++,
+                Role = role,
+                Content = normalizedContent,
+                ImageUrl = imageUrl,
+                CreatedAt = DateTime.UtcNow
+            });
+
+            chatHistory.Add(new ChatMessage(role, normalizedContent, imageUrl));
         }
 
         // ===== Service methods =====
@@ -205,8 +251,7 @@ namespace DotNet.Services
                     ClientId = string.IsNullOrEmpty(userId) ? null : userId, // allow anonymous
                     ArtistId = resolvedArtistId, // <-- set it HERE
                     Status = "draft",
-                    SubmittedAt = DateTime.UtcNow,
-                    ChatHistory = "[]" // 🚑 ensure we don't deserialize null
+                    SubmittedAt = DateTime.UtcNow
                 };
 
                 _context.Consultations.Add(c);
@@ -241,8 +286,7 @@ namespace DotNet.Services
                     ContactFullName = clientProfile.FullName ?? string.Empty,
                     ContactPhone = clientProfile.PhoneNumber ?? string.Empty,
                     Status = "draft",
-                    SubmittedAt = DateTime.UtcNow,
-                    ChatHistory = "[]"
+                    SubmittedAt = DateTime.UtcNow
                 };
 
                 _context.Consultations.Add(c);
@@ -280,25 +324,23 @@ namespace DotNet.Services
                 var consultation = await query.FirstOrDefaultAsync()
                                    ?? throw new KeyNotFoundException("Consultation not found");
 
-                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
-                    ? new List<ChatMessage>()
-                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
-                // Log user message
-                chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var chatHistory = ToChatMessages(messageEntities);
+                var nextOrderIndex = messageEntities.Count;
+
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message);
 
                 // Parse and persist data from this turn
                 UpdateConsultationFromChat(consultation, chatHistory);
-                PersistContactFromChat(consultation);
+                PersistContactFromChat(consultation, chatHistory);
 
                 // Use the chat service for a friendly, context-aware reply
                 var aiResponse = await _chatService.GetChatResponseAsync(chatHistory);
 
                 // Record assistant message
-                chatHistory.Add(new ChatMessage("assistant", aiResponse));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "assistant", aiResponse);
 
-                UpdateStatusIfComplete(consultation);
+                UpdateStatusIfComplete(consultation, chatHistory);
                 await SaveConsultationWithLoggingAsync(
                     consultation,
                     "chat turn persistence",
@@ -328,21 +370,20 @@ namespace DotNet.Services
                     .FirstOrDefaultAsync(c => c.Id == consultationId && c.ClientProfileId == clientProfileId)
                     ?? throw new KeyNotFoundException("Consultation not found");
 
-                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
-                    ? new List<ChatMessage>()
-                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
-                chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var chatHistory = ToChatMessages(messageEntities);
+                var nextOrderIndex = messageEntities.Count;
+
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message);
 
                 UpdateConsultationFromChat(consultation, chatHistory);
-                PersistContactFromChat(consultation);
+                PersistContactFromChat(consultation, chatHistory);
 
                 var aiResponse = await _chatService.GetChatResponseAsync(chatHistory);
 
-                chatHistory.Add(new ChatMessage("assistant", aiResponse));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "assistant", aiResponse);
 
-                UpdateStatusIfComplete(consultation);
+                UpdateStatusIfComplete(consultation, chatHistory);
                 await SaveConsultationWithLoggingAsync(
                     consultation,
                     "external chat turn persistence",
@@ -399,23 +440,21 @@ namespace DotNet.Services
                     consultation.ImageUrl = imageUrl;
                 }
 
-                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
-                    ? new List<ChatMessage>()
-                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var chatHistory = ToChatMessages(messageEntities);
+                var nextOrderIndex = messageEntities.Count;
                 if (imageUrl != null)
-                    chatHistory.Add(new ChatMessage("user", message ?? "Here's a reference image", imageUrl));
+                    AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message ?? "Here's a reference image", imageUrl);
                 else
-                    chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                    AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message);
                 UpdateConsultationFromChat(consultation, chatHistory);
-                PersistContactFromChat(consultation);
+                PersistContactFromChat(consultation, chatHistory);
 
                 var aiResponse = await _chatService.GetChatResponseWithImageAsync(chatHistory);
 
-                chatHistory.Add(new ChatMessage("assistant", aiResponse));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "assistant", aiResponse);
 
-                UpdateStatusIfComplete(consultation);
+                UpdateStatusIfComplete(consultation, chatHistory);
                 var imageContext = new Dictionary<string, object?>
                 {
                     ["ImageUploadedThisTurn"] = imageUrl != null
@@ -459,25 +498,23 @@ namespace DotNet.Services
                     consultation.ImageUrl = imageUrl;
                 }
 
-                var chatHistory = string.IsNullOrWhiteSpace(consultation.ChatHistory)
-                    ? new List<ChatMessage>()
-                    : (JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new());
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var chatHistory = ToChatMessages(messageEntities);
+                var nextOrderIndex = messageEntities.Count;
 
                 if (imageUrl != null)
-                    chatHistory.Add(new ChatMessage("user", message ?? "Here's a reference image", imageUrl));
+                    AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message ?? "Here's a reference image", imageUrl);
                 else
-                    chatHistory.Add(new ChatMessage("user", message ?? string.Empty));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                    AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "user", message);
 
                 UpdateConsultationFromChat(consultation, chatHistory);
-                PersistContactFromChat(consultation);
+                PersistContactFromChat(consultation, chatHistory);
 
                 var aiResponse = await _chatService.GetChatResponseWithImageAsync(chatHistory);
 
-                chatHistory.Add(new ChatMessage("assistant", aiResponse));
-                consultation.ChatHistory = JsonSerializer.Serialize(chatHistory);
+                AppendChatMessage(consultation.Id, chatHistory, ref nextOrderIndex, "assistant", aiResponse);
 
-                UpdateStatusIfComplete(consultation);
+                UpdateStatusIfComplete(consultation, chatHistory);
                 var imageContext = new Dictionary<string, object?>
                 {
                     ["ImageUploadedThisTurn"] = imageUrl != null
@@ -516,11 +553,17 @@ namespace DotNet.Services
                                            c.Id == consultationId && (c.ClientId == userId || c.ArtistId == userId))
                                    ?? throw new KeyNotFoundException("Consultation not found");
 
-                var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
-                                var clientChatHistory = chatHistory
-                                                                             .Where(m => m.Role != "system")
-                                        .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
-                                       .ToList();
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var clientChatHistory = messageEntities
+                    .Where(m => m.Role != "system")
+                    .Select(m => new ChatMessageDto
+                    {
+                        Role = m.Role,
+                        Content = m.Content,
+                        ImageUrl = m.ImageUrl,
+                        Timestamp = m.CreatedAt
+                    })
+                    .ToList();
                 return new ConsultationDto
                 {
                     Id = consultation.Id,
@@ -547,6 +590,8 @@ namespace DotNet.Services
                     PriceExpectation = consultation.PriceExpectation,
                     Availability = consultation.Availability,
                     Status = consultation.Status,
+                    CurrentStep = consultation.CurrentStep,
+                    SquareSyncError = consultation.SquareSyncError,
                     SubmittedAt = consultation.SubmittedAt,
                     ChatHistory = clientChatHistory
                 };
@@ -568,10 +613,16 @@ namespace DotNet.Services
                     .FirstOrDefaultAsync(c => c.Id == consultationId && c.ClientProfileId == clientProfileId)
                     ?? throw new KeyNotFoundException("Consultation not found");
 
-                var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
-                var clientChatHistory = chatHistory
+                var messageEntities = await LoadConsultationMessagesAsync(consultation.Id);
+                var clientChatHistory = messageEntities
                     .Where(m => m.Role != "system")
-                    .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
+                    .Select(m => new ChatMessageDto
+                    {
+                        Role = m.Role,
+                        Content = m.Content,
+                        ImageUrl = m.ImageUrl,
+                        Timestamp = m.CreatedAt
+                    })
                     .ToList();
 
                 return new ConsultationDto
@@ -600,6 +651,8 @@ namespace DotNet.Services
                     PriceExpectation = consultation.PriceExpectation,
                     Availability = consultation.Availability,
                     Status = consultation.Status,
+                    CurrentStep = consultation.CurrentStep,
+                    SquareSyncError = consultation.SquareSyncError,
                     SubmittedAt = consultation.SubmittedAt,
                     ChatHistory = clientChatHistory
                 };
@@ -622,15 +675,23 @@ namespace DotNet.Services
                     .OrderByDescending(c => c.SubmittedAt)
                     .ToListAsync();
 
+                var messageMap = await LoadMessagesForConsultationsAsync(consultations.Select(c => c.Id));
+
                 var consultationDtos = new List<ConsultationDto>();
 
                 foreach (var consultation in consultations)
                 {
-                    var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
-                                        var clientChatHistory = chatHistory
-                                                                                     .Where(m => m.Role != "system")
-                                            .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
-                                            .ToList();
+                    var messages = messageMap.TryGetValue(consultation.Id, out var list) ? list : new List<ConsultationMessage>();
+                    var clientChatHistory = messages
+                        .Where(m => m.Role != "system")
+                        .Select(m => new ChatMessageDto
+                        {
+                            Role = m.Role,
+                            Content = m.Content,
+                            ImageUrl = m.ImageUrl,
+                            Timestamp = m.CreatedAt
+                        })
+                        .ToList();
                     consultationDtos.Add(new ConsultationDto
                     {
                         Id = consultation.Id,
@@ -657,6 +718,8 @@ namespace DotNet.Services
                         PriceExpectation = consultation.PriceExpectation,
                         Availability = consultation.Availability,
                         Status = consultation.Status,
+                        CurrentStep = consultation.CurrentStep,
+                        SquareSyncError = consultation.SquareSyncError,
                         SubmittedAt = consultation.SubmittedAt,
                         ChatHistory = clientChatHistory
                     });
@@ -682,14 +745,22 @@ namespace DotNet.Services
                     .OrderByDescending(c => c.SubmittedAt)
                     .ToListAsync();
 
+                var messageMap = await LoadMessagesForConsultationsAsync(consultations.Select(c => c.Id));
+
                 var consultationDtos = new List<ConsultationDto>();
 
                 foreach (var consultation in consultations)
                 {
-                    var chatHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory) ?? new();
-                    var clientChatHistory = chatHistory
+                    var messages = messageMap.TryGetValue(consultation.Id, out var list) ? list : new List<ConsultationMessage>();
+                    var clientChatHistory = messages
                         .Where(m => m.Role != "system")
-                        .Select(m => new ChatMessageDto { Role = m.Role, Content = m.Content, ImageUrl = m.ImageUrl })
+                        .Select(m => new ChatMessageDto
+                        {
+                            Role = m.Role,
+                            Content = m.Content,
+                            ImageUrl = m.ImageUrl,
+                            Timestamp = m.CreatedAt
+                        })
                         .ToList();
 
                     consultationDtos.Add(new ConsultationDto
@@ -718,6 +789,8 @@ namespace DotNet.Services
                         PriceExpectation = consultation.PriceExpectation,
                         Availability = consultation.Availability,
                         Status = consultation.Status,
+                        CurrentStep = consultation.CurrentStep,
+                        SquareSyncError = consultation.SquareSyncError,
                         SubmittedAt = consultation.SubmittedAt,
                         ChatHistory = clientChatHistory
                     });
@@ -859,8 +932,7 @@ namespace DotNet.Services
                 }
 
                 // CONTACT (persist early if we spot it)
-                var (nm, ph) = ExtractContactFromChat(JsonSerializer.Serialize(new List<ChatMessage>
-                    { new ChatMessage("user", text) }));
+                var (nm, ph) = ExtractContactFromChat(new[] { new ChatMessage("user", text) });
                 if (!string.IsNullOrWhiteSpace(nm) && !LooksLikeFullName(consultation.ContactFullName))
                     consultation.ContactFullName = nm;
                 if (!string.IsNullOrWhiteSpace(ph) && !LooksLikePhone(consultation.ContactPhone))
@@ -875,6 +947,8 @@ namespace DotNet.Services
                             x.Id == consultationId && (x.ClientId == userId || x.ArtistId == userId))
                     ?? throw new KeyNotFoundException("Consultation not found");
 
+            var chatMessages = ToChatMessages(await LoadConsultationMessagesAsync(c.Id));
+
             var missing = new List<string>();
             if (string.IsNullOrWhiteSpace(c.Style)) missing.Add("style");
             if (string.IsNullOrWhiteSpace(c.BodyPart)) missing.Add("placement");
@@ -884,10 +958,10 @@ namespace DotNet.Services
 
             var name = LooksLikeFullName(c.ContactFullName)
                 ? c.ContactFullName
-                : ExtractContactFromChat(c.ChatHistory).fullName;
+                : ExtractContactFromChat(chatMessages).fullName;
             var phoneRaw = LooksLikePhone(c.ContactPhone)
                 ? c.ContactPhone
-                : ExtractContactFromChat(c.ChatHistory).phone;
+                : ExtractContactFromChat(chatMessages).phone;
 
             if (!LooksLikeFullName(name)) missing.Add("full name");
             if (!LooksLikePhone(phoneRaw)) missing.Add("phone");
@@ -897,20 +971,41 @@ namespace DotNet.Services
 
             var phone = NormalizePhone(phoneRaw);
 
-            var (customerId, apptId) = await _squareAppointmentsService.CreateAppointmentAsync(
-                fullName: name,
-                phoneE164: phone,
-                availabilityNote: c.Availability,
-                style: c.Style,
-                bodyPart: c.BodyPart,
-                size: c.Size,
-                budget: c.PriceExpectation,
-                referenceImageUrl: c.ImageUrl
-            );
+            string customerId;
+            string? apptId;
+            try
+            {
+                (customerId, apptId) = await _squareAppointmentsService.CreateAppointmentAsync(
+                    fullName: name,
+                    phoneE164: phone,
+                    availabilityNote: c.Availability,
+                    style: c.Style,
+                    bodyPart: c.BodyPart,
+                    size: c.Size,
+                    budget: c.PriceExpectation,
+                    referenceImageUrl: c.ImageUrl
+                );
+            }
+            catch (Exception ex)
+            {
+                c.SquareSyncError = ex.Message;
+                await SaveConsultationWithLoggingAsync(
+                    c,
+                    "manual submission to Square failed",
+                    additionalData: new Dictionary<string, object?>
+                    {
+                        ["SubmittedToSquare"] = false,
+                        ["SquareError"] = ex.Message
+                    });
+                throw;
+            }
 
             c.SquareCustomerId = customerId;
             c.SquareAppointmentId = apptId ?? "";
             c.Status = string.IsNullOrEmpty(apptId) ? "awaiting-review" : "submitted-to-square";
+            c.SquareSyncError = string.IsNullOrWhiteSpace(apptId)
+                ? "Square booking not created automatically. Please review availability."
+                : string.Empty;
 
             await SaveConsultationWithLoggingAsync(
                 c,
@@ -957,6 +1052,13 @@ namespace DotNet.Services
                     c.SquareCustomerId = customerId;
                     c.SquareAppointmentId = appointmentId ?? "";
                     c.Status = string.IsNullOrWhiteSpace(appointmentId) ? "awaiting-review" : "submitted-to-square";
+                    c.SquareSyncError = string.IsNullOrWhiteSpace(appointmentId)
+                        ? "Square booking not created automatically. Please review availability."
+                        : string.Empty;
+                }
+                else
+                {
+                    c.SquareSyncError = "Failed to link customer in Square.";
                 }
 
                 _logger.LogInformation(
@@ -967,13 +1069,14 @@ namespace DotNet.Services
             }
             catch (Exception ex)
             {
+                c.SquareSyncError = ex.Message;
                 _logger.LogError(ex, "Auto-submit to Square failed for consultation {Id}", c.Id);
             }
         }
 
-        private void PersistContactFromChat(Consultation c)
+        private void PersistContactFromChat(Consultation c, IEnumerable<ChatMessage> chatHistory)
         {
-            var (name, phoneRaw) = ExtractContactFromChat(c.ChatHistory);
+            var (name, phoneRaw) = ExtractContactFromChat(chatHistory);
 
             if (!LooksLikeFullName(c.ContactFullName) && LooksLikeFullName(name))
                 c.ContactFullName = name;
@@ -995,26 +1098,9 @@ namespace DotNet.Services
                 var resolvedCount = chatMessageCount;
                 if (!resolvedCount.HasValue)
                 {
-                    if (string.IsNullOrWhiteSpace(consultation.ChatHistory))
-                    {
-                        resolvedCount = 0;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            var parsedHistory = JsonSerializer.Deserialize<List<ChatMessage>>(consultation.ChatHistory);
-                            resolvedCount = parsedHistory?.Count;
-                        }
-                        catch (JsonException jsonEx)
-                        {
-                            _logger.LogWarning(
-                                jsonEx,
-                                "Consultation {ConsultationId}: Failed to parse chat history while logging after {Operation}",
-                                consultation.Id,
-                                operationDescription);
-                        }
-                    }
+                    resolvedCount = await _context.ConsultationMessages
+                        .Where(m => m.ConsultationId == consultation.Id)
+                        .CountAsync();
                 }
 
                 var snapshot = new Dictionary<string, object?>
@@ -1030,6 +1116,7 @@ namespace DotNet.Services
                     ["HasImage"] = !string.IsNullOrWhiteSpace(consultation.ImageUrl),
                     ["HasSquareCustomer"] = !string.IsNullOrWhiteSpace(consultation.SquareCustomerId),
                     ["HasSquareAppointment"] = !string.IsNullOrWhiteSpace(consultation.SquareAppointmentId),
+                    ["SquareSyncError"] = consultation.SquareSyncError,
                     ["ChatMessages"] = resolvedCount
                 };
 

@@ -32,6 +32,7 @@ namespace DotNet.Controllers
                     t.Name,
                     t.MetaPageId,
                     t.InstagramAccountId,
+                    t.ArtistUserId,
                     t.Plan,
                     t.TrialEndsAt
                 })
@@ -46,6 +47,7 @@ namespace DotNet.Controllers
             public string? PageAccessToken { get; set; }
             public string? InstagramAccountId { get; set; }
             public string? InstagramToken { get; set; }
+            public string? ArtistUserId { get; set; }
             public string? Plan { get; set; }
             public DateTime? TrialEndsAt { get; set; }
         }
@@ -70,6 +72,7 @@ namespace DotNet.Controllers
                     Name = request.Name,
                     MetaPageId = request.MetaPageId,
                     InstagramAccountId = request.InstagramAccountId,
+                    ArtistUserId = request.ArtistUserId,
                     EncryptedPageAccessToken = _tenantService.EncryptToken(request.PageAccessToken),
                     EncryptedInstagramToken = _tenantService.EncryptToken(request.InstagramToken),
                     Plan = plan,
@@ -86,6 +89,7 @@ namespace DotNet.Controllers
                 tenant.Name = request.Name;
                 tenant.MetaPageId = request.MetaPageId;
                 tenant.InstagramAccountId = request.InstagramAccountId;
+                tenant.ArtistUserId = request.ArtistUserId;
                 tenant.EncryptedPageAccessToken = _tenantService.EncryptToken(request.PageAccessToken);
                 tenant.EncryptedInstagramToken = _tenantService.EncryptToken(request.InstagramToken);
                 if (!string.IsNullOrWhiteSpace(request.Plan))

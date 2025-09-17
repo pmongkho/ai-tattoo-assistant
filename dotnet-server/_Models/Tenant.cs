@@ -28,6 +28,11 @@ namespace DotNet.Models
         public string? InstagramAccountId { get; set; }
 
         /// <summary>
+        /// Default artist user that inbound messages should be routed to.
+        /// </summary>
+        public string? ArtistUserId { get; set; }
+
+        /// <summary>
         /// Encrypted long-lived Page Access Token.
         /// </summary>
         public string? EncryptedPageAccessToken { get; set; }

@@ -191,6 +191,9 @@ namespace dotnet_server.Migrations
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
+                    b.Property<string>("ExternalHandle")
+                        .HasColumnType("text");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -224,15 +227,15 @@ namespace dotnet_server.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("ChatHistory")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("ClientId")
                         .HasColumnType("text");
 
                     b.Property<Guid?>("ClientProfileId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("CurrentStep")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("ContactFullName")
                         .IsRequired()
@@ -259,6 +262,10 @@ namespace dotnet_server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("SquareCustomerId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("SquareSyncError")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -289,6 +296,40 @@ namespace dotnet_server.Migrations
                                 "CK_Consultations_Status",
                                 "\"Status\" IN ('draft', 'awaiting-review', 'submitted-to-square', 'approved', 'rejected')");
                         });
+                });
+
+            modelBuilder.Entity("DotNet.Models.ConsultationMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConsultationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ImageUrl")
+                        .HasColumnType("text");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConsultationId", "OrderIndex")
+                        .IsUnique();
+
+                    b.ToTable("ConsultationMessages");
                 });
 
             modelBuilder.Entity("DotNet.Models.TattooJob", b =>
@@ -350,6 +391,9 @@ namespace dotnet_server.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("EncryptedPageAccessToken")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ArtistUserId")
                         .HasColumnType("text");
 
                     b.Property<string>("InstagramAccountId")
@@ -620,6 +664,17 @@ namespace dotnet_server.Migrations
                     b.Navigation("ClientProfile");
                 });
 
+            modelBuilder.Entity("DotNet.Models.ConsultationMessage", b =>
+                {
+                    b.HasOne("DotNet.Models.Consultation", "Consultation")
+                        .WithMany("Messages")
+                        .HasForeignKey("ConsultationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Consultation");
+                });
+
             modelBuilder.Entity("DotNet.Models.TattooJob", b =>
                 {
                     b.HasOne("DotNet.Models.ApplicationUser", "Creator")
@@ -713,6 +768,8 @@ namespace dotnet_server.Migrations
             modelBuilder.Entity("DotNet.Models.Consultation", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("Messages");
                 });
 #pragma warning restore 612, 618
         }

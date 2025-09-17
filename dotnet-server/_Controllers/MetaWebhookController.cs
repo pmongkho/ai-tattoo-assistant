@@ -1,5 +1,4 @@
 using System.Text;
-using System.Text.Json;
 using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -50,35 +49,56 @@ namespace DotNet.Controllers
         [HttpPost]
         public async Task<IActionResult> Receive(
             [FromBody] MetaEvent metaEvent,
-            [FromServices] TattooController chatController,
-            [FromServices] ITenantService tenantService)
+            [FromServices] ITenantService tenantService,
+            [FromServices] IMessagingIntegrationService messagingIntegrationService)
         {
-            if (metaEvent.Entry.Count == 0 || metaEvent.Entry[0].Messaging.Count == 0)
+            if (metaEvent.Entry.Count == 0)
             {
                 return Ok();
             }
 
-            var entry = metaEvent.Entry[0];
-            var msg = entry.Messaging[0];
-
-            var tenant = await tenantService.FindByMetaIdAsync(entry.Id);
-            var accessToken = tenantService.DecryptToken(tenant?.EncryptedPageAccessToken);
-
-            var response = await chatController.Consult(new TattooController.ChatRequest
+            foreach (var entry in metaEvent.Entry)
             {
-                Message = msg.Message.Text,
-                UserId = msg.Sender.Id
-            }) as OkObjectResult;
+                if (entry.Messaging.Count == 0)
+                {
+                    continue;
+                }
 
-            var replyText = response != null
-                ? ((JsonElement)response.Value!).GetProperty("response").GetString() ?? string.Empty
-                : string.Empty;
+                var tenant = await tenantService.FindByMetaIdAsync(entry.Id);
+                if (tenant == null)
+                {
+                    _logger.LogWarning("Received Meta webhook for unknown tenant id {MetaId}", entry.Id);
+                    continue;
+                }
 
-            if (!string.IsNullOrEmpty(replyText) && accessToken != null)
-            {
-                await SendMetaReplyAsync(msg.Sender.Id, replyText, accessToken);
+                var accessToken = tenantService.DecryptToken(tenant.EncryptedPageAccessToken);
+                var platform = entry.Id == tenant.InstagramAccountId ? "instagram" : "facebook";
+
+                foreach (var msg in entry.Messaging)
+                {
+                    var text = msg.Message?.Text;
+                    if (string.IsNullOrWhiteSpace(text))
+                    {
+                        continue;
+                    }
+
+                    string replyText;
+                    try
+                    {
+                        replyText = await messagingIntegrationService.ProcessIncomingMessageAsync(platform, tenant, msg.Sender.Id, text);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to process Meta message for sender {Sender}", msg.Sender.Id);
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(replyText) && !string.IsNullOrEmpty(accessToken))
+                    {
+                        await SendMetaReplyAsync(msg.Sender.Id, replyText, accessToken);
+                    }
+                }
             }
-
             return Ok();
         }
 
