@@ -65,19 +65,19 @@ namespace DotNet.Migrations
                 unique: true);
 
             migrationBuilder.Sql(@"
-                INSERT INTO \"ConsultationMessages\" (\"Id\", \"ConsultationId\", \"OrderIndex\", \"Role\", \"Content\", \"ImageUrl\", \"CreatedAt\")
+                INSERT INTO ""ConsultationMessages"" (""Id"", ""ConsultationId"", ""OrderIndex"", ""Role"", ""Content"", ""ImageUrl"", ""CreatedAt"")
                 SELECT md5(random()::text || clock_timestamp()::text)::uuid,
-                       c.\"Id\",
+                       c.""Id"",
                        elem.ordinality - 1,
                        elem.value->>'role',
                        elem.value->>'content',
                        elem.value->>'image_url',
-                       c.\"SubmittedAt\"
-                FROM \"Consultations\" c
+                       c.""SubmittedAt""
+                FROM ""Consultations"" c
                 CROSS JOIN LATERAL jsonb_array_elements(
                     CASE
-                        WHEN NULLIF(trim(c.\"ChatHistory\"), '') IS NULL THEN '[]'::jsonb
-                        ELSE c.\"ChatHistory\"::jsonb
+                        WHEN NULLIF(trim(c.""ChatHistory""), '') IS NULL THEN '[]'::jsonb
+                        ELSE c.""ChatHistory""::jsonb
                     END
                 ) WITH ORDINALITY AS elem(value, ordinality);
             ");
@@ -97,15 +97,15 @@ namespace DotNet.Migrations
                 defaultValue: "[]");
 
             migrationBuilder.Sql(@"
-                UPDATE \"Consultations\" c
-                SET \"ChatHistory\" = COALESCE((
+                UPDATE ""Consultations"" c
+                SET ""ChatHistory"" = COALESCE((
                     SELECT jsonb_agg(jsonb_build_object(
-                        'role', m.\"Role\",
-                        'content', m.\"Content\",
-                        'image_url', m.\"ImageUrl\"
-                    ) ORDER BY m.\"OrderIndex\")
-                    FROM \"ConsultationMessages\" m
-                    WHERE m.\"ConsultationId\" = c.\"Id\"
+                        'role', m.""Role"",
+                        'content', m.""Content"",
+                        'image_url', m.""ImageUrl""
+                    ) ORDER BY m.""OrderIndex"")
+                    FROM ""ConsultationMessages"" m
+                    WHERE m.""ConsultationId"" = c.""Id""
                 ), '[]'::jsonb)::text;
             ");
 
