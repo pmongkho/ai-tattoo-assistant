@@ -27,11 +27,42 @@ namespace dotnet_server.Migrations
                 nullable: false,
                 defaultValue: "");
 
-            migrationBuilder.AddColumn<string>(
-                name: "ArtistUserId",
-                table: "Tenants",
-                type: "text",
-                nullable: true);
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_schema = 'public'
+                          AND table_name = 'Tenants'
+                    ) THEN
+                        CREATE TABLE ""Tenants"" (
+                            ""Id"" uuid NOT NULL,
+                            ""Name"" text NOT NULL,
+                            ""MetaPageId"" text NULL,
+                            ""InstagramAccountId"" text NULL,
+                            ""EncryptedPageAccessToken"" text NULL,
+                            ""EncryptedInstagramToken"" text NULL,
+                            ""Plan"" text NOT NULL DEFAULT 'trial',
+                            ""TrialEndsAt"" timestamp with time zone NULL,
+                            ""ArtistUserId"" text NULL,
+                            CONSTRAINT ""PK_Tenants"" PRIMARY KEY (""Id"")
+                        );
+                    ELSE
+                        IF NOT EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_schema = 'public'
+                              AND table_name = 'Tenants'
+                              AND column_name = 'ArtistUserId'
+                        ) THEN
+                            ALTER TABLE ""Tenants""
+                            ADD COLUMN ""ArtistUserId"" text NULL;
+                        END IF;
+                    END IF;
+                END
+                $$;
+            ");
 
             migrationBuilder.AddColumn<string>(
                 name: "ExternalHandle",
@@ -124,9 +155,22 @@ namespace dotnet_server.Migrations
                 name: "SquareSyncError",
                 table: "Consultations");
 
-            migrationBuilder.DropColumn(
-                name: "ArtistUserId",
-                table: "Tenants");
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_schema = 'public'
+                          AND table_name = 'Tenants'
+                          AND column_name = 'ArtistUserId'
+                    ) THEN
+                        ALTER TABLE ""Tenants""
+                        DROP COLUMN ""ArtistUserId"";
+                    END IF;
+                END
+                $$;
+            ");
 
             migrationBuilder.DropColumn(
                 name: "ExternalHandle",
