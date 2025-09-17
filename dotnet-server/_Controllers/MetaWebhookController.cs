@@ -1,4 +1,7 @@
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -112,7 +115,9 @@ namespace DotNet.Controllers
 
             using var http = new HttpClient();
             var uri = $"https://graph.facebook.com/v18.0/me/messages?access_token={pageAccessToken}";
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+            var payloadJson = JsonSerializer.Serialize(payload);
+            using var content = new StringContent(payloadJson, Encoding.UTF8);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
             await http.PostAsync(uri, content);
         }
     }
