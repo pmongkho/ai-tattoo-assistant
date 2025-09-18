@@ -13,6 +13,8 @@ namespace DotNet.Services
         private readonly SquareOptions _opts;
         private readonly ILogger<SquareAppointmentsService> _logger;
         private readonly SquareClient _client;
+        private readonly string _configuredLocationId;
+        private readonly bool _locationIdLooksValid;
 
         public SquareAppointmentsService(
             IOptions<SquareOptions> options,
@@ -21,6 +23,33 @@ namespace DotNet.Services
             _opts = options.Value;
             _logger = logger;
 
+            _configuredLocationId = (_opts.LocationId ?? string.Empty).Trim();
+            _locationIdLooksValid = !string.IsNullOrEmpty(_configuredLocationId)
+                && Regex.IsMatch(_configuredLocationId, @"^[A-Za-z0-9_-]{4,64}$");
+
+            if (string.IsNullOrEmpty(_configuredLocationId))
+            {
+                _opts.LocationId = string.Empty;
+                _logger.LogWarning("Square LocationId is not configured. Provide Square:LocationId so bookings can be created.");
+            }
+            else
+            {
+                _opts.LocationId = _configuredLocationId.ToUpperInvariant();
+
+                if (_locationIdLooksValid)
+                {
+                    _logger.LogInformation("Square LocationId configured: {LocationId}", _opts.LocationId);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Square LocationId '{LocationId}' does not match the expected format; attempting to use it anyway.",
+                        _configuredLocationId);
+                }
+            }
+
+            _opts.TeamMemberId = (_opts.TeamMemberId ?? string.Empty).Trim();
+            _opts.ServiceVariationId = (_opts.ServiceVariationId ?? string.Empty).Trim();
 
             var env = _opts.Environment.Equals("Production", StringComparison.OrdinalIgnoreCase)
                 ? SquareEnvironment.Production
@@ -51,11 +80,22 @@ namespace DotNet.Services
             var customerId = await UpsertCustomerAsync(fullName, phoneE164,
                 note: BuildCustomerNote(style, bodyPart, size, budget, availabilityNote, referenceImageUrl));
 
-            if (!Regex.IsMatch(_opts.LocationId ?? string.Empty, @"^[A-Z0-9]{10}$"))
+            var locationId = _opts.LocationId;
+            if (string.IsNullOrWhiteSpace(locationId))
             {
-                var reason = "Square LocationId configuration is missing or invalid; skipping booking creation.";
+                var reason = string.IsNullOrEmpty(_configuredLocationId)
+                    ? "Square LocationId configuration is missing; skipping booking creation."
+                    : $"Square LocationId configuration is invalid; skipping booking creation. Value: '{_configuredLocationId}'.";
                 _logger.LogWarning(reason);
                 return new SquareAppointmentResult(customerId, null, reason, false);
+            }
+
+            if (!_locationIdLooksValid)
+            {
+                _logger.LogWarning(
+                    "Square LocationId '{LocationId}' did not pass validation; continuing with sanitized value {SanitizedLocationId}.",
+                    _configuredLocationId,
+                    locationId);
             }
 
             if (string.IsNullOrWhiteSpace(_opts.ServiceVariationId))
@@ -92,7 +132,7 @@ namespace DotNet.Services
                                 StartAt = startRange.ToString("o"),
                                 EndAt = endRange.ToString("o")
                             },
-                            LocationId = _opts.LocationId,
+                            LocationId = locationId,
                             SegmentFilters = new[]
                             {
                                 new SegmentFilter
@@ -123,7 +163,7 @@ namespace DotNet.Services
                     IdempotencyKey = Guid.NewGuid().ToString("N"),
                     Booking = new Booking
                     {
-                        LocationId = _opts.LocationId,
+                        LocationId = locationId,
                         CustomerId = customerId,
                         StartAt = slot.StartAt, // ISO8601 from availability
                         AppointmentSegments = new[]
