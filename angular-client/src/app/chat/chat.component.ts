@@ -1,4 +1,4 @@
-import { Component, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core'
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core'
 import { CommonModule } from '@angular/common' // for *ngFor, *ngIf, [ngClass]
 import { FormsModule } from '@angular/forms' // for [(ngModel)]
 import { firstValueFrom } from 'rxjs'
@@ -6,21 +6,16 @@ import { ChatApiService } from '../../_services/chat.service'
 import { environment } from '../../environments/environment'
 
 
-type Msg = {
-        sender: 'user' | 'assistant'
-        text: string
-        imageUrl?: string
-        pending?: boolean
-}
+type Msg = { sender: 'user' | 'assistant'; text: string; imageUrl?: string }
 
 @Component({
-        selector: 'app-chat',
-        standalone: true,
-        imports: [CommonModule, FormsModule],
-        templateUrl: './chat.component.html',
+	selector: 'app-chat',
+	standalone: true,
+	imports: [CommonModule, FormsModule],
+	templateUrl: './chat.component.html',
 })
-export class ChatComponent implements OnInit, AfterViewInit {
-        @ViewChild('messageContainer') messageContainer!: ElementRef<HTMLDivElement>
+export class ChatComponent implements OnInit {
+	@ViewChild('messageContainer') messageContainer!: ElementRef<HTMLDivElement>
 
         messages: Msg[] = []
         userInput: string = ''
@@ -28,26 +23,15 @@ export class ChatComponent implements OnInit, AfterViewInit {
         consultationId: string = ''
         selectedFile: File | null = null
         private artistId = environment.artistId
-        private readonly greeting =
-                "Hey there! I'm your AI tattoo assistant. Share your ideas or reference photos and I'll help you plan the perfect design."
 
         constructor(private chatApi: ChatApiService) {}
 
         ngOnInit() {
-                this.messages = [
-                        {
-                                sender: 'assistant',
-                                text: this.greeting,
-                        },
-                ]
+                this.messages = []
         }
 
-        ngAfterViewInit(): void {
-                this.scrollToBottom()
-        }
-
-        // HTML calls this
-        async sendMessage() {
+	// HTML calls this
+	async sendMessage() {
                 const text = (this.userInput || '').trim()
                 if ((!text && !this.selectedFile) || this.sending) return
 
@@ -58,8 +42,6 @@ export class ChatComponent implements OnInit, AfterViewInit {
                         : undefined
                 this.pushUser(text, preview)
                 this.userInput = ''
-
-                this.pushAssistant('Thinking…', true)
 
                 try {
                         if (!this.consultationId) {
@@ -95,35 +77,18 @@ export class ChatComponent implements OnInit, AfterViewInit {
 
         // Optional: hook up to a “Reset” button if you add one later
         resetConversation() {
-                this.messages = [
-                        {
-                                sender: 'assistant',
-                                text: this.greeting,
-                        },
-                ]
-                this.consultationId = ''
+                this.messages = []
         }
 
-        private pushAssistant(text: string, pending = false) {
+        private pushAssistant(text: string) {
                 if (!text) return
-
-                if (pending) {
-                        this.messages.push({ sender: 'assistant', text, pending: true })
-                } else {
-                        const pendingIndex = this.findLastPendingAssistantIndex()
-                        if (pendingIndex !== -1) {
-                                this.messages[pendingIndex] = { sender: 'assistant', text }
-                        } else {
-                                this.messages.push({ sender: 'assistant', text })
-                        }
-                }
-
-                setTimeout(() => this.scrollToBottom())
+                this.messages.push({ sender: 'assistant', text })
+                queueMicrotask(() => this.scrollToBottom())
         }
 
         private pushUser(text: string, imageUrl?: string) {
                 this.messages.push({ sender: 'user', text, imageUrl })
-                setTimeout(() => this.scrollToBottom())
+                queueMicrotask(() => this.scrollToBottom())
         }
 
         onFileSelected(event: Event) {
@@ -133,18 +98,8 @@ export class ChatComponent implements OnInit, AfterViewInit {
                 }
         }
 
-        private scrollToBottom() {
-                const el = this.messageContainer?.nativeElement
-                if (el) el.scrollTop = el.scrollHeight
-        }
-
-        private findLastPendingAssistantIndex(): number {
-                for (let i = this.messages.length - 1; i >= 0; i--) {
-                        const msg = this.messages[i]
-                        if (msg.sender === 'assistant' && msg.pending) {
-                                return i
-                        }
-                }
-                return -1
-        }
+	private scrollToBottom() {
+		const el = this.messageContainer?.nativeElement
+		if (el) el.scrollTop = el.scrollHeight
+	}
 }
