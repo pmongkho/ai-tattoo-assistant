@@ -214,8 +214,8 @@ namespace DotNet.Services
                 var details = ex.Errors
                     .Select(err => string.Join(" ", new[]
                     {
-                        err.Category?.ToString(),
-                        err.Code?.ToString(),
+                        err.Category.ToString(),
+                        err.Code.ToString(),
                         err.Detail
                     }.Where(part => !string.IsNullOrWhiteSpace(part)).Select(part => part!.Trim())))
                     .Where(msg => !string.IsNullOrWhiteSpace(msg))
