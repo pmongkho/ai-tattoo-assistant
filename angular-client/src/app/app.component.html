@@ -72,9 +72,26 @@
 		<router-outlet></router-outlet>
 	</main>
 
-	<footer
-		class="bg-white dark:bg-gray-800 py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t dark:border-gray-700"
-	>
-		<p>© 2025 AI Tattoo Assistant</p>
-	</footer>
+        <footer
+                class="bg-white dark:bg-gray-800 py-6 text-center text-gray-500 dark:text-gray-400 text-sm border-t dark:border-gray-700"
+        >
+                <p class="mb-2">© 2025 AI Tattoo Assistant</p>
+                <nav class="flex flex-wrap justify-center gap-4">
+                        <a
+                                routerLink="/terms"
+                                class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                >Terms &amp; Conditions</a
+                        >
+                        <a
+                                routerLink="/privacy"
+                                class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                >Privacy Policy</a
+                        >
+                        <a
+                                routerLink="/data-deletion"
+                                class="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                                >User Data Deletion</a
+                        >
+                </nav>
+        </footer>
 </div>
