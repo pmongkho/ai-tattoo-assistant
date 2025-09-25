@@ -5,6 +5,7 @@ using Square;
 using Square.Customers;
 using Square.Bookings;
 using Square.Catalog;         // Catalog endpoints + models
+using Square.Locations;
 
 namespace DotNet.Services
 {
@@ -15,6 +16,7 @@ namespace DotNet.Services
         private readonly SquareClient _client;
         private readonly string _configuredLocationId;
         private readonly bool _locationIdLooksValid;
+        private readonly Lazy<Task<LocationValidationResult>> _locationValidationTask;
 
         public SquareAppointmentsService(
             IOptions<SquareOptions> options,
@@ -63,8 +65,7 @@ namespace DotNet.Services
                 }
             );
 
-
-
+            _locationValidationTask = new Lazy<Task<LocationValidationResult>>(ValidateLocationAsync);
         }
 
         public async Task<SquareAppointmentResult> CreateAppointmentAsync(
@@ -96,6 +97,15 @@ namespace DotNet.Services
                     "Square LocationId '{LocationId}' did not pass validation; continuing with sanitized value {SanitizedLocationId}.",
                     _configuredLocationId,
                     locationId);
+            }
+
+            var locationValidation = await _locationValidationTask.Value;
+            if (!locationValidation.Success)
+            {
+                var reason = locationValidation.Reason
+                    ?? "Square LocationId could not be validated; skipping booking creation.";
+                _logger.LogWarning(reason);
+                return new SquareAppointmentResult(customerId, null, reason, false);
             }
 
             if (string.IsNullOrWhiteSpace(_opts.ServiceVariationId))
@@ -229,6 +239,46 @@ namespace DotNet.Services
 
             return "Square API error: " + ex?.Message;
         }
+
+        private async Task<LocationValidationResult> ValidateLocationAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_opts.LocationId))
+            {
+                return new LocationValidationResult(false, "Square LocationId is not configured; skipping booking creation.");
+            }
+
+            try
+            {
+                var response = await _client.LocationsApi.RetrieveLocationAsync(_opts.LocationId);
+                var location = response?.Location;
+
+                if (location != null && string.Equals(location.Id, _opts.LocationId, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new LocationValidationResult(true, null);
+                }
+
+                var reason = location == null
+                    ? $"Square location '{_opts.LocationId}' could not be retrieved; ensure it exists for the {_opts.Environment} environment."
+                    : $"Square returned unexpected location data for '{_opts.LocationId}'; ensure the configuration matches the {_opts.Environment} environment.";
+
+                return new LocationValidationResult(false, reason);
+            }
+            catch (SquareApiException ex)
+            {
+                var locationNotFound = ex.Errors?.Any(err => string.Equals(err.Code, "NOT_FOUND", StringComparison.OrdinalIgnoreCase)) == true;
+                var reason = locationNotFound
+                    ? $"Square location '{_opts.LocationId}' was not found in the {_opts.Environment} environment. Confirm the configuration uses the correct location id for this environment."
+                    : BuildSquareApiErrorMessage(ex);
+
+                return new LocationValidationResult(false, reason);
+            }
+            catch (Exception ex)
+            {
+                return new LocationValidationResult(false, $"Unexpected error while validating Square location '{_opts.LocationId}': {ex.Message}");
+            }
+        }
+
+        private readonly record struct LocationValidationResult(bool Success, string? Reason);
 
         private async Task<string> UpsertCustomerAsync(string fullName, string phoneE164, string note)
         {
