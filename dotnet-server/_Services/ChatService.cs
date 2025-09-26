@@ -28,6 +28,84 @@ namespace DotNet.Services
         private static readonly Regex NameRegex = new(@"\b([A-Za-z][A-Za-z'’\-]+)\s+([A-Za-z][A-Za-z'’\-]+)\b", RegexOptions.Compiled);
         private static readonly Regex PhoneRegex = new(@"\+?\d[\d\s\-()]{7,}\d", RegexOptions.Compiled);
 
+        private static readonly string[] SubjectKeywords =
+        {
+            "what are we making",
+            "what are you thinking",
+            "what design",
+            "what kind of tattoo",
+            "share your ideas",
+            "tell me about the design"
+        };
+
+        private static readonly string[] StyleKeywords =
+        {
+            "style",
+            "black & grey",
+            "black and grey",
+            "color",
+            "colour",
+            "realism",
+            "realistic"
+        };
+
+        private static readonly string[] PlacementKeywords =
+        {
+            "placement",
+            "where on",
+            "which area",
+            "which specific area",
+            "exact location"
+        };
+
+        private static readonly string[] SizeKeywords =
+        {
+            "how large",
+            "what size",
+            "size are you",
+            "palm-size",
+            "hand-size",
+            "half-sleeve",
+            "full sleeve"
+        };
+
+        private static readonly string[] ReferenceKeywords =
+        {
+            "reference",
+            "references",
+            "inspo",
+            "photos",
+            "images"
+        };
+
+        private static readonly string[] BudgetKeywords =
+        {
+            "budget",
+            "price range",
+            "comfortable range",
+            "spending"
+        };
+
+        private static readonly string[] AvailabilityKeywords =
+        {
+            "availability",
+            "dates work",
+            "days work",
+            "schedule",
+            "when are you free"
+        };
+
+        private static readonly string[] ContactKeywords =
+        {
+            "full name",
+            "name and phone",
+            "phone number",
+            "contact info",
+            "contact information",
+            "best phone",
+            "square notification"
+        };
+
         public const string DefaultSystemPrompt = @"You are a personable, upbeat TATTOO CONSULTATION ASSISTANT for a professional studio.
 Behavior:
 - Let the client speak first. After their first message, ask EXACTLY ONE question at a time.
@@ -199,49 +277,207 @@ Wrap-up:
                 return;
             }
 
-            var data = _userData.GetOrAdd(userId, _ => new TattooConsultationData());
-            var userMessages = history.Where(m => m.Role == "user").ToList();
-            if (userMessages.Count == 0)
+            var data = ExtractConsultationData(history);
+            if (data == null)
             {
                 return;
             }
 
-            var lastMessage = userMessages.Last();
-            switch (userMessages.Count)
+            _userData[userId] = data;
+            _logger.LogInformation("Collected data for {User}: {Data}", userId, JsonSerializer.Serialize(data));
+        }
+
+        private TattooConsultationData? ExtractConsultationData(List<ChatMessage> history)
+        {
+            if (history.Count == 0)
             {
-                case 1:
-                    data.Subject = lastMessage.Content;
-                    break;
-                case 2:
-                    data.Style = lastMessage.Content;
-                    break;
-                case 3:
-                    data.Placement = lastMessage.Content;
-                    break;
-                case 4:
-                    data.Size = lastMessage.Content;
-                    break;
-                case 5:
-                    data.References = lastMessage.Content;
-                    break;
-                case 6:
-                    data.Budget = lastMessage.Content;
-                    break;
-                case 7:
-                    data.Availability = lastMessage.Content;
-                    break;
-                case 8:
-                    var content = lastMessage.Content ?? string.Empty;
-                    var nameMatch = NameRegex.Match(content);
-                    if (nameMatch.Success)
-                        data.Name = nameMatch.Value;
-                    var phoneMatch = PhoneRegex.Match(content);
-                    if (phoneMatch.Success)
-                        data.Phone = phoneMatch.Value;
-                    break;
+                return null;
             }
 
-            _logger.LogInformation("Collected data for {User}: {Data}", userId, JsonSerializer.Serialize(data));
+            var data = new TattooConsultationData();
+            string? lastAssistantMessage = null;
+
+            foreach (var message in history)
+            {
+                if (message.Role?.Equals("assistant", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    lastAssistantMessage = message.Content;
+                    continue;
+                }
+
+                if (!message.Role?.Equals("user", StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    continue;
+                }
+
+                var content = message.Content?.Trim();
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    continue;
+                }
+
+                var assistantLower = lastAssistantMessage?.ToLowerInvariant();
+                var contentLower = content.ToLowerInvariant();
+
+                var capturedExplicitSubject = false;
+
+                if (ShouldCapture(assistantLower, SubjectKeywords) && string.IsNullOrWhiteSpace(data.Subject))
+                {
+                    data.Subject = content;
+                    capturedExplicitSubject = true;
+                }
+
+                if (ShouldCapture(assistantLower, StyleKeywords) || LooksLikeStyleAnswer(contentLower))
+                {
+                    data.Style = ChooseBetterValue(data.Style, content);
+                }
+
+                if (ShouldCapture(assistantLower, PlacementKeywords) || LooksLikePlacementAnswer(contentLower))
+                {
+                    data.Placement = ChooseBetterValue(data.Placement, content);
+                }
+
+                if (ShouldCapture(assistantLower, SizeKeywords) || LooksLikeSizeAnswer(contentLower))
+                {
+                    data.Size = ChooseBetterValue(data.Size, content);
+                }
+
+                if (ShouldCapture(assistantLower, ReferenceKeywords))
+                {
+                    data.References = ChooseBetterValue(data.References, content);
+                }
+
+                if (ShouldCapture(assistantLower, BudgetKeywords) || LooksLikeBudget(contentLower))
+                {
+                    data.Budget = ChooseBetterValue(data.Budget, content);
+                }
+
+                if (ShouldCapture(assistantLower, AvailabilityKeywords))
+                {
+                    data.Availability = ChooseBetterValue(data.Availability, content);
+                }
+
+                if (ShouldCapture(assistantLower, ContactKeywords) || ContainsContactInfo(content))
+                {
+                    CaptureContactInfo(data, content);
+                }
+
+                if (!capturedExplicitSubject && string.IsNullOrWhiteSpace(data.Subject))
+                {
+                    data.Subject = content;
+                }
+            }
+
+            return data;
+        }
+
+        private static bool ShouldCapture(string? assistantLower, string[] keywords)
+        {
+            if (string.IsNullOrWhiteSpace(assistantLower))
+            {
+                return false;
+            }
+
+            return keywords.Any(keyword => assistantLower.Contains(keyword));
+        }
+
+        private static bool LooksLikeStyleAnswer(string contentLower)
+        {
+            return contentLower.Contains("black") ||
+                   contentLower.Contains("grey") ||
+                   contentLower.Contains("gray") ||
+                   contentLower.Contains("color") ||
+                   contentLower.Contains("colour") ||
+                   contentLower.Contains("realism") ||
+                   contentLower.Contains("traditional") ||
+                   contentLower.Contains("neo") ||
+                   contentLower.Contains("fine line");
+        }
+
+        private static bool LooksLikePlacementAnswer(string contentLower)
+        {
+            return contentLower.Contains("arm") ||
+                   contentLower.Contains("bicep") ||
+                   contentLower.Contains("forearm") ||
+                   contentLower.Contains("thigh") ||
+                   contentLower.Contains("calf") ||
+                   contentLower.Contains("back") ||
+                   contentLower.Contains("chest") ||
+                   contentLower.Contains("shoulder");
+        }
+
+        private static bool LooksLikeSizeAnswer(string contentLower)
+        {
+            return contentLower.Contains("inch") ||
+                   contentLower.Contains("palm") ||
+                   contentLower.Contains("hand") ||
+                   contentLower.Contains("half") ||
+                   contentLower.Contains("quarter") ||
+                   contentLower.Contains("sleeve") ||
+                   contentLower.Contains("full");
+        }
+
+        private static bool LooksLikeBudget(string contentLower)
+        {
+            return contentLower.Contains("$") ||
+                   contentLower.Contains("dollar") ||
+                   contentLower.Contains("buck") ||
+                   contentLower.Contains("budget") ||
+                   contentLower.Contains("price");
+        }
+
+        private static bool ContainsContactInfo(string content)
+        {
+            return NameRegex.IsMatch(content) || PhoneRegex.IsMatch(content);
+        }
+
+        private static void CaptureContactInfo(TattooConsultationData data, string content)
+        {
+            var nameMatch = NameRegex.Match(content);
+            if (nameMatch.Success)
+            {
+                data.Name = ChooseBetterValue(data.Name, nameMatch.Value.Trim());
+            }
+
+            var phoneMatch = PhoneRegex.Match(content);
+            if (phoneMatch.Success)
+            {
+                data.Phone = ChooseBetterValue(data.Phone, NormalizePhone(phoneMatch.Value));
+            }
+        }
+
+        private static string NormalizePhone(string raw)
+        {
+            var digits = new StringBuilder();
+            foreach (var ch in raw)
+            {
+                if (char.IsDigit(ch))
+                {
+                    digits.Append(ch);
+                }
+            }
+
+            if (raw.Trim().StartsWith("+"))
+            {
+                return "+" + digits.ToString();
+            }
+
+            return digits.ToString();
+        }
+
+        private static string? ChooseBetterValue(string? existing, string? candidate)
+        {
+            if (string.IsNullOrWhiteSpace(candidate))
+            {
+                return existing;
+            }
+
+            if (string.IsNullOrWhiteSpace(existing))
+            {
+                return candidate.Trim();
+            }
+
+            return candidate.Length > existing.Length ? candidate.Trim() : existing;
         }
 
 
