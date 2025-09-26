@@ -202,6 +202,22 @@ namespace DotNet.Services
                     }
                 }
 
+                if (candidate == null)
+                {
+                    var trimmed = text.Trim();
+                    if (!string.IsNullOrWhiteSpace(trimmed) && !trimmed.Any(char.IsDigit))
+                    {
+                        var words = trimmed
+                            .Split(new[] { ' ', '\t', '\n', ',', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                            .Select(w => w.Trim(NameTrimChars))
+                            .Where(w => !string.IsNullOrWhiteSpace(w))
+                            .ToArray();
+
+                        if (words.Length is >= 1 and <= 2 && words.All(IsPlausibleName))
+                            candidate = string.Join(' ', words);
+                    }
+                }
+
                 if (!string.IsNullOrWhiteSpace(candidate) && IsPlausibleName(candidate))
                     name = ToTitle(candidate.Trim());
 
@@ -982,6 +998,8 @@ namespace DotNet.Services
                     consultation.Style = text.Contains("color", StringComparison.OrdinalIgnoreCase)
                         ? "Color Realism"
                         : "Black & Grey Realism";
+                else if (Regex.IsMatch(text, @"\bblack\s*(and|&)?\s*gr(e|a)y\b", RegexOptions.IgnoreCase))
+                    consultation.Style = "Black & Grey";
                 else if (Regex.IsMatch(text, @"\bfine\s*line\b", RegexOptions.IgnoreCase))
                     consultation.Style = "Fine Line";
                 else if (Regex.IsMatch(text, @"\bjapanese\b", RegexOptions.IgnoreCase))
@@ -1004,6 +1022,8 @@ namespace DotNet.Services
                 // PLACEMENT
                 if (Regex.IsMatch(text, @"\bchest\b", RegexOptions.IgnoreCase))
                     consultation.BodyPart = "Chest";
+                else if (Regex.IsMatch(text, @"\binner\s*forearm\b", RegexOptions.IgnoreCase))
+                    consultation.BodyPart = "Inner Forearm";
                 else if (text.Contains("arm", StringComparison.OrdinalIgnoreCase) ||
                          text.Contains("forearm", StringComparison.OrdinalIgnoreCase) ||
                          text.Contains("sleeve", StringComparison.OrdinalIgnoreCase))
