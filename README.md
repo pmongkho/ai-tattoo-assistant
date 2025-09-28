@@ -69,6 +69,7 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
   ```
   The command echoes the challenge string when the configured verify token matches (update `hub.verify_token` if you changed `MetaAccess:FbVerifyToken`).
 
+
 ## License
 
 This project is open-source and available under the MIT License.

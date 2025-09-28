@@ -77,5 +77,6 @@ namespace DotNet.Tests.Controllers
             var contentResult = Assert.IsType<ContentResult>(result);
             Assert.Equal("challenge", contentResult.Content);
         }
+
     }
 }
