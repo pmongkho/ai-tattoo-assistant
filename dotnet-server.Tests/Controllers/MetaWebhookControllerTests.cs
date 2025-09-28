@@ -63,5 +63,20 @@ namespace DotNet.Tests.Controllers
             // Assert
             Assert.IsType<UnauthorizedResult>(result);
         }
+
+        [Fact]
+        public void Verify_TrimsTokensBeforeComparison()
+        {
+            // Arrange
+            var controller = CreateController("  expected-token  ");
+
+            // Act
+            var result = controller.Verify("subscribe", "challenge", " expected-token ");
+
+            // Assert
+            var contentResult = Assert.IsType<ContentResult>(result);
+            Assert.Equal("challenge", contentResult.Content);
+        }
+
     }
 }

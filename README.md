@@ -61,7 +61,14 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 
 - **Callback URL**: Deploy the backend and provide Meta with `https://<your-domain>/api/meta`. When running locally with a tunnel, point the tunnel to the ASP.NET server and append `/api/meta`.
 - **Verify Token**: Set the configuration key `MetaAccess:FbVerifyToken` (or environment variable `MetaAccess__FbVerifyToken`) to the value you enter in the Meta developer console. The webhook verification endpoint compares Meta's `hub.verify_token` against this value.
+- **Whitespace Handling**: The backend trims any leading/trailing whitespace on both the configured verify token and the value Meta sends, but token characters remain case-sensitive—double-check for typos when copying the token into the developer console.
 - **Challenge Handling**: Meta sends a GET request with `hub.mode`, `hub.challenge`, and `hub.verify_token`. The `MetaWebhookController` returns the `hub.challenge` string when the mode is `subscribe` and the token matches; otherwise it rejects the request.
+- **Local Test**: Replace the placeholder values and run:
+  ```bash
+  curl "https://ai-tattoo-assistant.onrender.com/api/meta?hub.mode=subscribe&hub.challenge=YOUR_CHALLENGE&hub.verify_token=tattoo-verify-prod"
+  ```
+  The command echoes the challenge string when the configured verify token matches (update `hub.verify_token` if you changed `MetaAccess:FbVerifyToken`).
+
 
 ## License
 
