@@ -57,6 +57,12 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 - `.env` – Environment variables
 - `docker-compose.yml` – For container orchestration
 
+## Meta (Facebook/Instagram) Webhook Setup
+
+- **Callback URL**: Deploy the backend and provide Meta with `https://<your-domain>/api/meta`. When running locally with a tunnel, point the tunnel to the ASP.NET server and append `/api/meta`.
+- **Verify Token**: Set the configuration key `MetaAccess:FbVerifyToken` (or environment variable `MetaAccess__FbVerifyToken`) to the value you enter in the Meta developer console. The webhook verification endpoint compares Meta's `hub.verify_token` against this value.
+- **Challenge Handling**: Meta sends a GET request with `hub.mode`, `hub.challenge`, and `hub.verify_token`. The `MetaWebhookController` returns the `hub.challenge` string when the mode is `subscribe` and the token matches; otherwise it rejects the request.
+
 ## License
 
 This project is open-source and available under the MIT License.
