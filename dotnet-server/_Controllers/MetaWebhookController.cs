@@ -21,7 +21,11 @@ namespace DotNet.Controllers
             IConfiguration configuration,
             ILogger<MetaWebhookController> logger)
         {
-            _verifyToken = configuration["MetaAccess:FbVerifyToken"] ?? "tattoo-verify-prod";
+            var configuredToken = configuration["MetaAccess:FbVerifyToken"];
+            _verifyToken = string.IsNullOrWhiteSpace(configuredToken)
+                ? "tattoo-verify-prod"
+                : configuredToken.Trim();
+
             _logger = logger;
         }
 
@@ -33,14 +37,33 @@ namespace DotNet.Controllers
         {
             try
             {
-                if (string.IsNullOrEmpty(mode) || string.IsNullOrEmpty(challenge) || string.IsNullOrEmpty(verifyToken))
+                var trimmedToken = verifyToken?.Trim();
+
+                if (string.IsNullOrEmpty(mode) || string.IsNullOrEmpty(challenge) || string.IsNullOrEmpty(trimmedToken))
                 {
+                    _logger.LogWarning(
+                        "Meta webhook verification rejected due to missing parameters (mode: {ModeProvided}, challenge: {ChallengeProvided}, token: {TokenProvided}).",
+                        !string.IsNullOrEmpty(mode),
+                        !string.IsNullOrEmpty(challenge),
+                        !string.IsNullOrEmpty(trimmedToken));
                     return BadRequest("Missing hub parameters.");
                 }
 
-                return (mode.Equals("subscribe", StringComparison.OrdinalIgnoreCase) && verifyToken == _verifyToken)
-                    ? Content(challenge)
-                    : Unauthorized();
+                var subscribed = mode.Equals("subscribe", StringComparison.OrdinalIgnoreCase);
+                var tokenMatches = string.Equals(trimmedToken, _verifyToken, StringComparison.Ordinal);
+
+                if (subscribed && tokenMatches)
+                {
+                    _logger.LogInformation("Meta webhook verification succeeded.");
+                    return Content(challenge, "text/plain", Encoding.UTF8);
+                }
+
+                _logger.LogWarning(
+                    "Meta webhook verification failed (ModeValid: {ModeValid}, TokenMatch: {TokenMatch}).",
+                    subscribed,
+                    tokenMatches);
+
+                return Unauthorized();
             }
             catch (Exception ex)
             {
