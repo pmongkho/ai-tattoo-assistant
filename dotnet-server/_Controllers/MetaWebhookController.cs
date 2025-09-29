@@ -5,8 +5,8 @@ using System.Text.Json;
 using DotNet.Models;
 using DotNet.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace DotNet.Controllers
 {
@@ -14,18 +14,14 @@ namespace DotNet.Controllers
     [Route("api/meta")]
     public class MetaWebhookController : ControllerBase
     {
-        private readonly string _verifyToken;
+        private readonly MetaOptions _metaOptions;
         private readonly ILogger<MetaWebhookController> _logger;
 
         public MetaWebhookController(
-            IConfiguration configuration,
+            IOptions<MetaOptions> metaOptions,
             ILogger<MetaWebhookController> logger)
         {
-            var configuredToken = configuration["MetaAccess:FbVerifyToken"];
-            _verifyToken = string.IsNullOrWhiteSpace(configuredToken)
-                ? "tattoo-verify-prod"
-                : configuredToken.Trim();
-
+            _metaOptions = metaOptions.Value;
             _logger = logger;
         }
 
@@ -50,7 +46,8 @@ namespace DotNet.Controllers
                 }
 
                 var subscribed = mode.Equals("subscribe", StringComparison.OrdinalIgnoreCase);
-                var tokenMatches = string.Equals(trimmedToken, _verifyToken, StringComparison.Ordinal);
+                var expectedToken = _metaOptions.WebhookVerifyToken ?? "tattoo-verify-prod";
+                var tokenMatches = string.Equals(trimmedToken, expectedToken, StringComparison.Ordinal);
 
                 if (subscribed && tokenMatches)
                 {
@@ -100,11 +97,20 @@ namespace DotNet.Controllers
                 var accessToken = tenantService.DecryptToken(tenant.EncryptedPageAccessToken);
                 var platform = entry.Id == tenant.InstagramAccountId ? "instagram" : "facebook";
 
+                var roleDefinition = TenantRoleCatalog.Resolve(tenant.Plan);
+                var allowAutoReplies = roleDefinition.HasCapability("auto-replies");
+
                 foreach (var msg in entry.Messaging)
                 {
                     var text = msg.Message?.Text;
                     if (string.IsNullOrWhiteSpace(text))
                     {
+                        continue;
+                    }
+
+                    if (!allowAutoReplies)
+                    {
+                        _logger.LogDebug("Skipping auto-reply for tenant {TenantId} because plan {Plan} lacks auto-replies capability.", tenant.Id, tenant.Plan);
                         continue;
                     }
 
