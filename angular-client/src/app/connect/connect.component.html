@@ -1,26 +1,125 @@
-<div class="space-y-6">
-  <form [formGroup]="form" (ngSubmit)="submit()" class="space-y-4 max-w-md">
-    <input formControlName="name" placeholder="Tenant name" class="w-full border p-2 rounded" />
-    <input formControlName="metaPageId" placeholder="Facebook Page ID" class="w-full border p-2 rounded" />
-    <input formControlName="pageAccessToken" placeholder="Page Access Token" class="w-full border p-2 rounded" />
-    <input formControlName="instagramAccountId" placeholder="Instagram Account ID" class="w-full border p-2 rounded" />
-    <input formControlName="instagramToken" placeholder="Instagram Token" class="w-full border p-2 rounded" />
-    <select formControlName="plan" class="w-full border p-2 rounded">
-      <option value="trial">Trial (1 week)</option>
-      <option value="basic">Basic - $50/week</option>
-      <option value="premium">Premium - $100/week + auto bookings</option>
-    </select>
-    <button type="submit" class="bg-emerald-600 text-white px-4 py-2 rounded">Connect</button>
-  </form>
+<div class="connect-wrapper space-y-8">
+  <div class="rounded-2xl border border-slate-200 bg-white/70 backdrop-blur p-6 shadow-sm">
+    <h1 class="text-2xl font-semibold text-slate-900 mb-2">Connect Instagram</h1>
+    <p class="text-sm text-slate-600 mb-6">
+      Launch the Meta Login flow to fetch the Page token, Instagram Business ID, and subscribe webhooks automatically.
+    </p>
 
-  <div>
-    <h2 class="text-lg font-semibold mb-2">Existing Tenants</h2>
-    <ul class="list-disc pl-5" *ngIf="tenants$ | async as tenants">
-      <li *ngFor="let t of tenants">
-        {{ t.name }} - Plan: {{ t.plan }}
-        <span *ngIf="t.trialEndsAt">(trial ends {{ t.trialEndsAt | date:'mediumDate' }})</span>
-        - FB: {{ t.metaPageId || 'n/a' }} - IG: {{ t.instagramAccountId || 'n/a' }}
-      </li>
-    </ul>
+    <form [formGroup]="form" (ngSubmit)="startConnect()" class="grid gap-4 md:grid-cols-2">
+      <div class="md:col-span-2">
+        <label class="form-label" for="tenant-name">Studio / Artist name</label>
+        <input
+          id="tenant-name"
+          formControlName="name"
+          type="text"
+          autocomplete="off"
+          class="form-input"
+          placeholder="Ink District Studio"
+        />
+      </div>
+
+      <div>
+        <label class="form-label" for="plan">Subscription tier</label>
+        <select id="plan" formControlName="plan" class="form-select">
+          <option *ngFor="let role of roles" [value]="role.plan">
+            {{ role.displayName }}
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label class="form-label" for="artist-user">Default artist (optional)</label>
+        <input
+          id="artist-user"
+          formControlName="artistUserId"
+          type="text"
+          class="form-input"
+          placeholder="CRM user id for routing"
+        />
+      </div>
+
+      <div class="md:col-span-2" *ngIf="selectedRole as role">
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+          <div class="font-medium tracking-wide uppercase text-emerald-700 text-xs mb-2">
+            {{ role.displayName }} • Role: {{ role.role | titlecase }}
+          </div>
+          <p class="mb-3">{{ role.description }}</p>
+          <div class="flex flex-wrap gap-2">
+            <span
+              *ngFor="let capability of role.capabilities"
+              class="inline-flex items-center rounded-full bg-white/80 px-3 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+              {{ capability | titlecase }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="md:col-span-2 flex flex-col gap-3">
+        <button
+          type="submit"
+          class="btn-primary"
+          [disabled]="connecting"
+        >
+          {{ connecting ? 'Waiting for Meta…' : 'Connect Instagram' }}
+        </button>
+        <div *ngIf="statusMessage" class="text-sm text-slate-600">{{ statusMessage }}</div>
+        <div *ngIf="errorMessage" class="text-sm text-rose-600 font-medium">{{ errorMessage }}</div>
+      </div>
+    </form>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white/60 backdrop-blur p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-lg font-semibold text-slate-900">Connected Tenants</h2>
+      <span class="text-xs uppercase tracking-wide text-slate-500" *ngIf="roles.length">
+        Plans: {{ roles.length }} tiers configured
+      </span>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-slate-200 text-sm">
+        <thead class="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+          <tr>
+            <th class="px-4 py-3 text-left">Tenant</th>
+            <th class="px-4 py-3 text-left">Plan</th>
+            <th class="px-4 py-3 text-left">Role</th>
+            <th class="px-4 py-3 text-left">Capabilities</th>
+            <th class="px-4 py-3 text-left">Meta IDs</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100" *ngIf="tenants$ | async as tenants">
+          <tr *ngFor="let tenant of tenants" class="hover:bg-emerald-50/30 transition">
+            <td class="px-4 py-3">
+              <div class="font-medium text-slate-900">{{ tenant.name }}</div>
+              <div class="text-xs text-slate-500" *ngIf="tenant.trialEndsAt">
+                Trial ends {{ tenant.trialEndsAt | date: 'mediumDate' }}
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="font-semibold text-emerald-700">{{ tenant.plan | titlecase }}</div>
+            </td>
+            <td class="px-4 py-3">{{ tenant.role | titlecase }}</td>
+            <td class="px-4 py-3">
+              <div class="flex flex-wrap gap-1">
+                <span
+                  *ngFor="let cap of tenant.capabilities"
+                  class="inline-flex rounded-full bg-slate-100 px-2.5 py-0.5 text-xs text-slate-600">
+                  {{ cap | titlecase }}
+                </span>
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              <div class="text-xs text-slate-500">Page: {{ tenant.metaPageId || 'n/a' }}</div>
+              <div class="text-xs text-slate-500">IG: {{ tenant.instagramAccountId || 'n/a' }}</div>
+            </td>
+          </tr>
+          <tr *ngIf="tenants.length === 0">
+            <td colspan="5" class="px-4 py-6 text-center text-slate-500 text-sm">
+              No tenants connected yet. Use the form above to link the first studio.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </div>

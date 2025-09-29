@@ -53,6 +53,10 @@ builder.Services.AddScoped<ITenantService, TenantService>();
 builder.Services.AddHttpClient<ChatService>();
 builder.Services.AddControllers()
     .AddJsonOptions(opts => opts.JsonSerializerOptions.PropertyNameCaseInsensitive = true);
+builder.Services.AddMemoryCache();
+builder.Services.Configure<MetaOptions>(builder.Configuration.GetSection("Meta"));
+builder.Services.AddSingleton<MetaConnectSessionStore>();
+builder.Services.AddHttpClient<IMetaOAuthService, MetaOAuthService>();
 
 // Build the application
 var app = builder.Build();
