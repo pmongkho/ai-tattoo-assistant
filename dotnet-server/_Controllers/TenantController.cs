@@ -219,11 +219,10 @@ namespace DotNet.Controllers
             var statusTitle = isError ? "Connection Failed" : "Connected";
             var status = isError ? "error" : "success";
 
-            var html = $"""
-<!doctype html>
-<html lang="en">
+            var html = $@"<!doctype html>
+<html lang=""en"">
 <head>
-<meta charset="utf-8" />
+<meta charset=""utf-8"" />
 <title>Meta Connect</title>
 <style>
 body {{ font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; display: flex; align-items: center; justify-content: center; min-height: 100vh; }}
@@ -234,9 +233,9 @@ small {{ color: #94a3b8; font-size: 0.9rem; }}
 </style>
 </head>
 <body>
-<div class="card">
-  <div class="status">{statusTitle}</div>
-  <div class="message">{safeMessage}</div>
+<div class=""card"">
+  <div class=""status"">{statusTitle}</div>
+  <div class=""message"">{safeMessage}</div>
   <small>You can close this window and return to AI Tattoo Assistant.</small>
 </div>
 <script>
@@ -246,8 +245,7 @@ small {{ color: #94a3b8; font-size: 0.9rem; }}
   setTimeout(() => window.close(), 1500);
 </script>
 </body>
-</html>
-""";
+</html>";
 
             return Content(html, "text/html");
         }
