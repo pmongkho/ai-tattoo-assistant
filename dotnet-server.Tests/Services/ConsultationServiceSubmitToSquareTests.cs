@@ -16,7 +16,7 @@ namespace DotNet.Tests.Services
         private readonly Mock<ISquareAppointmentsService> _squareServiceMock = new();
 
         // TODO: add additional shared setup helpers as you implement the tests.
-
+ß
         [Fact(Skip = "TODO: Implement once Arrange/Act/Assert steps are completed.")]
         public async Task SubmitToSquare_WithCompleteConsultation_PersistsSquareIdentifiers()
         {

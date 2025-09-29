@@ -1,0 +1,7 @@
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/bin/Debug/net8.0/CoverletSourceRootsMapping_dotnet-server.Tests
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.csproj.AssemblyReference.cache
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.GeneratedMSBuildEditorConfig.editorconfig
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.AssemblyInfoInputs.cache
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.AssemblyInfo.cs
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.csproj.CoreCompileInputs.cache
+/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/Debug/net8.0/dotnet-server.Tests.sourcelink.json
