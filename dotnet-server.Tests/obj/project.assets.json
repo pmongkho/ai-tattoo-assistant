@@ -8725,32 +8725,33 @@
     ]
   },
   "packageFolders": {
-    "/Users/phongsavanhmongkhonvilay/.nuget/packages/": {}
+    "/Users/a_mac/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/dotnet-server.Tests.csproj",
+      "projectUniqueName": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/dotnet-server.Tests.csproj",
       "projectName": "dotnet-server.Tests",
-      "projectPath": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/dotnet-server.Tests.csproj",
-      "packagesPath": "/Users/phongsavanhmongkhonvilay/.nuget/packages/",
-      "outputPath": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/",
+      "projectPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/dotnet-server.Tests.csproj",
+      "packagesPath": "/Users/a_mac/.nuget/packages/",
+      "outputPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server.Tests/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "/Users/phongsavanhmongkhonvilay/.nuget/NuGet/NuGet.Config"
+        "/Users/a_mac/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "/usr/local/Cellar/dotnet/10.0.107/libexec/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {
-              "projectPath": "/Users/phongsavanhmongkhonvilay/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj"
+            "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj": {
+              "projectPath": "/Users/a_mac/Desktop/CS PROJECTS/DOTNET/ai-tattoo-assistant/dotnet-server/dotnet-server.csproj"
             }
           }
         }
@@ -8759,7 +8760,13 @@
         "warnAsError": [
           "NU1605"
         ]
-      }
+      },
+      "restoreAuditProperties": {
+        "enableAudit": "true",
+        "auditLevel": "low",
+        "auditMode": "direct"
+      },
+      "SdkAnalysisLevel": "10.0.100"
     },
     "frameworks": {
       "net8.0": {
@@ -8801,12 +8808,22 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[8.0.26, 8.0.26]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[8.0.26, 8.0.26]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/8.0.100/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/Cellar/dotnet/10.0.107/libexec/sdk/10.0.107/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
