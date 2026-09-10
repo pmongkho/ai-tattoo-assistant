@@ -178,7 +178,7 @@ Wrap-up:
 
             _model = Environment.GetEnvironmentVariable("OPENAI_MODEL") ??
                      configuration["OpenAI:AiModel"] ??
-                     "gpt-3.5-turbo";
+                     "gpt-4.1-mini";
 
             var tempString = Environment.GetEnvironmentVariable("OPENAI_TEMPERATURE") ??
                              configuration["OpenAI:Temperature"];
@@ -217,8 +217,6 @@ Wrap-up:
                 return BuildFallbackResponse(conversationHistory);
             }
 
-            var url = "https://api.openai.com/v1/chat/completions";
-
             if (conversationHistory == null)
             {
                 conversationHistory = new List<ChatMessage>();
@@ -229,45 +227,13 @@ Wrap-up:
                 conversationHistory.Insert(0, new ChatMessage("system", GetRandomSystemPrompt()));
             }
 
-            var payload = new
+            var input = conversationHistory.Select(message => new
             {
-                model = _model,
-                messages = conversationHistory,
-                temperature = _temperature,
-                top_p = _topP
-            };
+                role = message.Role,
+                content = message.Content
+            });
 
-            var jsonPayload = JsonSerializer.Serialize(payload);
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-            request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-            // Send the request to OpenAI.
-            var response = await _httpClient.SendAsync(request);
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                throw new Exception(
-                    $"OpenAI API request failed with status code {response.StatusCode}: {errorContent}");
-            }
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            // Parse the response JSON to extract the AI's reply.
-            using var jsonDoc = JsonDocument.Parse(responseContent);
-            var chatResponse = jsonDoc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
-
-            if (string.IsNullOrWhiteSpace(chatResponse))
-            {
-                _logger.LogWarning("Empty response from OpenAI. Raw content: {Response}", responseContent);
-                chatResponse = "I'm sorry, I didn't catch that. Could you please rephrase?";
-            }
-
-            return chatResponse;
+            return await SendResponseRequestAsync(input);
         }
 
         private void UpdateUserData(string userId, List<ChatMessage> history)
@@ -488,8 +454,6 @@ Wrap-up:
                 return BuildFallbackResponse(conversationHistory);
             }
 
-            var url = "https://api.openai.com/v1/chat/completions";
-
             if (conversationHistory == null)
             {
                 conversationHistory = new List<ChatMessage>();
@@ -501,7 +465,7 @@ Wrap-up:
             }
 
             // Build the payload with the conversation history
-            var messages = new List<object>();
+            var input = new List<object>();
 
             foreach (var msg in conversationHistory)
             {
@@ -527,13 +491,13 @@ Wrap-up:
 
                     if (imageUrl != null)
                     {
-                        messages.Add(new
+                        input.Add(new
                         {
                             role = msg.Role,
                             content = new object[]
                             {
-                                new { type = "text", text = msg.Content },
-                                new { type = "image_url", image_url = new { url = imageUrl } }
+                                new { type = "input_text", text = msg.Content },
+                                new { type = "input_image", image_url = imageUrl }
                             }
                         });
                         continue;
@@ -541,28 +505,32 @@ Wrap-up:
                 }
 
                 // Regular text-only message or image fetch failed
-                messages.Add(new
+                input.Add(new
                 {
                     role = msg.Role,
                     content = msg.Content
                 });
             }
 
+            return await SendResponseRequestAsync(input);
+        }
+
+        private async Task<string> SendResponseRequestAsync(object input)
+        {
             var payload = new
             {
                 model = _model,
-                messages = messages,
+                input,
                 temperature = _temperature,
                 top_p = _topP
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
-            var request = new HttpRequestMessage(HttpMethod.Post, url);
+            using var request = new HttpRequestMessage(HttpMethod.Post, "https://api.openai.com/v1/responses");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
             request.Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
 
-            // Send the request to OpenAI.
-            var response = await _httpClient.SendAsync(request);
+            using var response = await _httpClient.SendAsync(request);
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
@@ -572,13 +540,8 @@ Wrap-up:
 
             var responseContent = await response.Content.ReadAsStringAsync();
 
-            // Parse the response JSON to extract the AI's reply.
             using var jsonDoc = JsonDocument.Parse(responseContent);
-            var chatResponse = jsonDoc.RootElement
-                .GetProperty("choices")[0]
-                .GetProperty("message")
-                .GetProperty("content")
-                .GetString();
+            var chatResponse = ExtractOutputText(jsonDoc.RootElement);
 
             if (string.IsNullOrWhiteSpace(chatResponse))
             {
@@ -587,6 +550,35 @@ Wrap-up:
             }
 
             return chatResponse;
+        }
+
+        private static string? ExtractOutputText(JsonElement response)
+        {
+            if (!response.TryGetProperty("output", out var output) || output.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            var textParts = new List<string>();
+            foreach (var item in output.EnumerateArray())
+            {
+                if (!item.TryGetProperty("type", out var itemType) || itemType.GetString() != "message" ||
+                    !item.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                foreach (var part in content.EnumerateArray())
+                {
+                    if (part.TryGetProperty("type", out var partType) && partType.GetString() == "output_text" &&
+                        part.TryGetProperty("text", out var text) && !string.IsNullOrWhiteSpace(text.GetString()))
+                    {
+                        textParts.Add(text.GetString()!);
+                    }
+                }
+            }
+
+            return textParts.Count == 0 ? null : string.Join("", textParts);
         }
 
         private string BuildFallbackResponse(List<ChatMessage>? conversationHistory)
@@ -639,4 +631,3 @@ Wrap-up:
         }
     }
 }
-
