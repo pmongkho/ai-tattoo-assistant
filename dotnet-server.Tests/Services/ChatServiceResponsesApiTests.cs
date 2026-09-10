@@ -81,6 +81,36 @@ public class ChatServiceResponsesApiTests
         Assert.Equal("data:image/png;base64,AAAA", content[1].GetProperty("image_url").GetString());
     }
 
+    [Fact]
+    public async Task GetChatResponseAsync_WhenApiKeyIsRejected_ReturnsFallbackAndStopsRetrying()
+    {
+        var requestCount = 0;
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            requestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            {
+                Content = new StringContent(
+                    """{"error":{"message":"Your API key has been invalidated.","code":"token_invalidated"}}""",
+                    Encoding.UTF8,
+                    "application/json")
+            });
+        });
+        var service = CreateService(handler);
+        var history = new List<ChatMessage>
+        {
+            new("user", "I want a raven tattoo on my forearm.")
+        };
+
+        var firstResult = await service.GetChatResponseAsync(history);
+        var secondResult = await service.GetChatResponseAsync(history);
+
+        Assert.Contains("human artist will follow up soon", firstResult);
+        Assert.Contains("raven tattoo on my forearm", firstResult);
+        Assert.Equal(firstResult, secondResult);
+        Assert.Equal(1, requestCount);
+    }
+
     private static ChatService CreateService(HttpMessageHandler handler)
     {
         var configuration = new ConfigurationBuilder()

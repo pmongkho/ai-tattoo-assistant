@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -23,6 +24,7 @@ namespace DotNet.Services
         private readonly double _temperature;
         private readonly double _topP;
         private readonly bool _hasValidApiKey;
+        private bool _authenticationFailed;
         private static readonly Random _rand = new();
         private static readonly ConcurrentDictionary<string, TattooConsultationData> _userData = new();
         private static readonly Regex NameRegex = new(@"\b([A-Za-z][A-Za-z'’\-]+)\s+([A-Za-z][A-Za-z'’\-]+)\b", RegexOptions.Compiled);
@@ -212,9 +214,11 @@ Wrap-up:
 
         public async Task<string> GetChatResponseAsync(List<ChatMessage> conversationHistory)
         {
-            if (!_hasValidApiKey)
+            if (!_hasValidApiKey || _authenticationFailed)
             {
-                return BuildFallbackResponse(conversationHistory);
+                return BuildFallbackResponse(
+                    conversationHistory,
+                    _authenticationFailed ? "OpenAI rejected the configured API key" : "the OpenAI API key is not configured");
             }
 
             if (conversationHistory == null)
@@ -233,7 +237,7 @@ Wrap-up:
                 content = message.Content
             });
 
-            return await SendResponseRequestAsync(input);
+            return await SendResponseRequestAsync(input, conversationHistory);
         }
 
         private void UpdateUserData(string userId, List<ChatMessage> history)
@@ -449,9 +453,11 @@ Wrap-up:
 
         public async Task<string> GetChatResponseWithImageAsync(List<ChatMessage> conversationHistory)
         {
-            if (!_hasValidApiKey)
+            if (!_hasValidApiKey || _authenticationFailed)
             {
-                return BuildFallbackResponse(conversationHistory);
+                return BuildFallbackResponse(
+                    conversationHistory,
+                    _authenticationFailed ? "OpenAI rejected the configured API key" : "the OpenAI API key is not configured");
             }
 
             if (conversationHistory == null)
@@ -512,10 +518,12 @@ Wrap-up:
                 });
             }
 
-            return await SendResponseRequestAsync(input);
+            return await SendResponseRequestAsync(input, conversationHistory);
         }
 
-        private async Task<string> SendResponseRequestAsync(object input)
+        private async Task<string> SendResponseRequestAsync(
+            object input,
+            List<ChatMessage> conversationHistory)
         {
             var payload = new
             {
@@ -534,6 +542,15 @@ Wrap-up:
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
+
+                if (response.StatusCode == HttpStatusCode.Unauthorized)
+                {
+                    _authenticationFailed = true;
+                    _logger.LogError(
+                        "OpenAI rejected the configured API key. Replace OPENAI_API_KEY in the backend environment or secret manager, then restart the application.");
+                    return BuildFallbackResponse(conversationHistory, "OpenAI authentication failed");
+                }
+
                 throw new Exception(
                     $"OpenAI API request failed with status code {response.StatusCode}: {errorContent}");
             }
@@ -581,7 +598,9 @@ Wrap-up:
             return textParts.Count == 0 ? null : string.Join("", textParts);
         }
 
-        private string BuildFallbackResponse(List<ChatMessage>? conversationHistory)
+        private string BuildFallbackResponse(
+            List<ChatMessage>? conversationHistory,
+            string reason)
         {
             var snippet = ExtractLatestUserSnippet(conversationHistory);
             var baseMessage = "Thanks for reaching out! Our AI tattoo assistant is warming up right now, so a human artist will follow up soon.";
@@ -593,7 +612,7 @@ Wrap-up:
 
             baseMessage += " Feel free to keep sharing inspo images or any questions and we'll take it from there.";
 
-            _logger.LogWarning("Returning fallback chat response because the OpenAI API key is not configured.");
+            _logger.LogWarning("Returning fallback chat response because {Reason}.", reason);
             return baseMessage;
         }
 
