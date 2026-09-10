@@ -60,7 +60,7 @@ The server uses `POST /v1/responses` for both text and image-assisted consultati
 1. Create or select an OpenAI API project, add billing/credits as needed, and create a project API key.
 2. Add `OPENAI_API_KEY` to the backend environment in your local shell, Docker/hosting provider, or secret manager, then restart/redeploy the backend.
 3. If you override `OPENAI_MODEL`, choose a model available to that API project that supports the Responses API and image input. Remove an old `OPENAI_MODEL=gpt-3.5-turbo` override so the new default can take effect.
-4. Verify the integration with `GET /api/tattoo/test-openai` after starting the backend. A missing key intentionally returns the app's fallback message instead of calling OpenAI.
+4. Verify the integration with `GET /api/tattoo/test-openai` after starting the backend. A missing or rejected key intentionally returns the app's fallback message instead of breaking the consultation flow. A rejected key is disabled for that service instance so it is not repeatedly sent; replace `OPENAI_API_KEY` and restart the backend.
 
 Conversation state remains in this application's consultation history rather than in an OpenAI Assistant or Thread, so this migration does not require migrating Assistant IDs or server-side OpenAI threads.
 
