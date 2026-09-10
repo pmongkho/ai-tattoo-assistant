@@ -1,13 +1,9 @@
-using DotNet.Data;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace dotnet_server.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250915000000_MakeConsultationClientIdNullable")]
     public partial class MakeConsultationClientIdNullable : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
