@@ -16,7 +16,7 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 - **Frontend**: Angular, TypeScript
 - **Backend**: ASP.NET Core (.NET 8), C#
 - **Database**: PostgreSQL
-- **AI Integration**: OpenAI Assistants API
+- **AI Integration**: OpenAI Responses API
 - **DevOps**: Docker, Docker Compose
 
 ## Getting Started
@@ -38,7 +38,10 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
    ```
 
 2. Set up your environment:
-   - Copy `sample.env` to `.env` and fill in necessary values (e.g. DB connection, OpenAI key).
+   - Set `OPENAI_API_KEY` to a project API key from the OpenAI dashboard. The backend sends it only from the server; do not put it in the Angular app or commit it.
+   - Optionally set `OPENAI_MODEL` (the default is `gpt-4.1-mini`), `OPENAI_TEMPERATURE`, and `OPENAI_TOP_P`.
+   - No Assistants API assistant, thread, or vector-store ID is required. Existing chat history is sent to the Responses API with each request.
+   - Configure the database and other service credentials required by your deployment.
    - Provide Azure Blob Storage settings via environment variables or `appsettings.*.json`:
      - `AZURE_STORAGE_CONNECTION_STRING` / `AzureStorage:ConnectionString`
      - `AZURE_STORAGE_CONTAINER` / `AzureStorage:ContainerName`
@@ -49,6 +52,17 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
    ```
 
 4. Visit the frontend at `http://localhost:4200`
+
+### OpenAI Responses API setup
+
+The server uses `POST /v1/responses` for both text and image-assisted consultations, following OpenAI's [Responses API migration guide](https://developers.openai.com/api/docs/guides/migrate-to-responses). To enable it:
+
+1. Create or select an OpenAI API project, add billing/credits as needed, and create a project API key.
+2. Add `OPENAI_API_KEY` to the backend environment in your local shell, Docker/hosting provider, or secret manager, then restart/redeploy the backend.
+3. If you override `OPENAI_MODEL`, choose a model available to that API project that supports the Responses API and image input. Remove an old `OPENAI_MODEL=gpt-3.5-turbo` override so the new default can take effect.
+4. Verify the integration with `GET /api/tattoo/test-openai` after starting the backend. A missing key intentionally returns the app's fallback message instead of calling OpenAI.
+
+Conversation state remains in this application's consultation history rather than in an OpenAI Assistant or Thread, so this migration does not require migrating Assistant IDs or server-side OpenAI threads.
 
 ### Azure Blob Storage recovery
 
