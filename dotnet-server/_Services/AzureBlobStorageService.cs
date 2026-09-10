@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 
 namespace DotNet.Services
 {
@@ -11,6 +12,7 @@ namespace DotNet.Services
     {
         private readonly BlobContainerClient _containerClient;
         private readonly ILogger<AzureBlobStorageService> _logger;
+        private readonly Lazy<Task> _containerInitialization;
 
         public AzureBlobStorageService(IConfiguration configuration, ILogger<AzureBlobStorageService> logger)
         {
@@ -27,11 +29,25 @@ namespace DotNet.Services
 
             var serviceClient = new BlobServiceClient(connectionString);
             _containerClient = serviceClient.GetBlobContainerClient(containerName);
-            _containerClient.CreateIfNotExists(PublicAccessType.Blob);
+            // Service constructors are called while ASP.NET Core is resolving a
+            // request. Performing a synchronous network operation here turns a
+            // transient DNS/Azure outage into an unhandled controller-activation
+            // exception. Initialize the container asynchronously when storage is
+            // actually used instead.
+            _containerInitialization = new Lazy<Task>(
+                InitializeContainerAsync,
+                LazyThreadSafetyMode.ExecutionAndPublication);
+        }
+
+        private async Task InitializeContainerAsync()
+        {
+            await _containerClient.CreateIfNotExistsAsync(PublicAccessType.Blob);
         }
 
         public async Task<string> UploadFileAsync(IFormFile file)
         {
+            await _containerInitialization.Value;
+
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             var blobName = $"consultations/{Guid.NewGuid()}{extension}";
             var blobClient = _containerClient.GetBlobClient(blobName);
@@ -46,6 +62,8 @@ namespace DotNet.Services
         {
             try
             {
+                await _containerInitialization.Value;
+
                 if (fileName.StartsWith("http", StringComparison.OrdinalIgnoreCase))
                 {
                     fileName = GetFileNameFromUrl(fileName);
@@ -56,7 +74,7 @@ namespace DotNet.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error deleting blob {fileName}");
+                _logger.LogError(ex, "Error deleting blob {FileName}", fileName);
                 return false;
             }
         }
