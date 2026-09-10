@@ -350,6 +350,10 @@ public static class ProgramExtensions
 
     public static void ConfigureMiddleware(this WebApplication app, IHostEnvironment env)
     {
+        // Run CORS before middleware that may short-circuit the pipeline so even
+        // redirects and error responses expose the CORS headers to browser clients.
+        app.UseCors("AllowClients");
+
         // Configure the HTTP request pipeline
         if (env.IsDevelopment())
         {
@@ -362,7 +366,6 @@ public static class ProgramExtensions
         }
 
         // Configure middleware (order matters)
-        app.UseCors("AllowClients");
         app.UseAuthentication();
         app.UseAuthorization();
         app.MapControllers();
