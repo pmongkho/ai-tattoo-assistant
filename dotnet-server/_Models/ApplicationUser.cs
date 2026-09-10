@@ -15,10 +15,10 @@ namespace DotNet.Models
         
         // Override email to match your schema
         [PersonalData]
-        public override string Email { get; set; } = string.Empty;
+        public override string? Email { get; set; }
         
         [PersonalData]
-        public override string PhoneNumber { get; set; } = string.Empty;
+        public override string? PhoneNumber { get; set; }
         
         [PersonalData]
         public string ProfileImageUrl { get; set; } = string.Empty;
