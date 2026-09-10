@@ -50,6 +50,44 @@ AI Tattoo Assistant is a full-stack web application that uses AI to streamline t
 
 4. Visit the frontend at `http://localhost:4200`
 
+### Azure Blob Storage recovery
+
+If Azure removed the storage account (for example, after a subscription was
+disabled), requests to its former `*.blob.core.windows.net` hostname can fail
+with `nodename nor servname provided, or not known`. Retrying the application
+cannot repair that condition because the configured storage endpoint no longer
+exists.
+
+To restore image uploads:
+
+1. Reactivate the Azure subscription, if it is still recoverable, and check the
+   Azure portal for a recoverable storage account. If Azure has permanently
+   deleted the account, create a new **StorageV2** account instead.
+2. Copy a connection string for the restored or replacement account from
+   **Storage account > Access keys**.
+3. Replace `AZURE_STORAGE_CONNECTION_STRING` wherever the backend is hosted.
+   Remove any old value from the repository-level `.env`, shell profile, IDE
+   launch settings, and hosting-provider secrets so it cannot override the new
+   value.
+4. Set `AZURE_STORAGE_CONTAINER` if a name other than
+   `consultation-images` should be used, then restart the backend. The service
+   creates the container on the first upload or delete operation.
+
+The connection string restores connectivity only; it cannot restore blobs from
+a permanently deleted account. Previously stored image URLs will continue to
+refer to the deleted account and must be replaced or removed from the database.
+
+For local development without image uploads, unset
+`AZURE_STORAGE_CONNECTION_STRING` (and leave
+`AzureStorage:ConnectionString` empty). The backend will use
+`NoOpStorageService`; text-only consultation features remain available, while
+an attempted image upload reports that file storage is not configured.
+
+The ASP.NET Core warning `Failed to determine the https port for redirect` is
+separate from Azure Storage and does not cause the blob DNS failure. Development
+runs do not need HTTPS redirection; production deployments should configure an
+HTTPS URL or terminate TLS at the hosting proxy.
+
 ## Project Structure
 
 - `dotnet-server/` – ASP.NET backend with all API and DB logic
